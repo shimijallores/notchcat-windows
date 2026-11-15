@@ -27,6 +27,21 @@ use window::{
     spawn_power_listener, sync_hotkey_registration,
 };
 
+pub fn acquire_single_instance_lock(db_path: &std::path::Path) -> Option<std::fs::File> {
+    use std::os::windows::fs::OpenOptionsExt;
+    if let Some(parent) = db_path.parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+    let lock_path = db_path.with_extension("lock");
+    std::fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create(true)
+        .share_mode(0)
+        .open(&lock_path)
+        .ok()
+}
+
 pub fn run() {
     if let Some(code) = handle_cli_tooling() {
         std::process::exit(code);
@@ -34,6 +49,15 @@ pub fn run() {
 
     let flags = StartupFlags::from_args();
     let db_path = db_path_from_env();
+    let instance_lock = match acquire_single_instance_lock(&db_path) {
+        Some(lock) => lock,
+        None => {
+            let activate_path = db_path.with_extension("activate");
+            let _ = std::fs::write(&activate_path, b"1");
+            std::process::exit(0);
+        }
+    };
+    let _ = std::fs::remove_file(db_path.with_extension("activate"));
     let db = Db::open_or_memory(&db_path);
 
     let mut core_state = CoreState::new(db);
@@ -163,10 +187,40 @@ pub fn run() {
         .expect("error while building NotchCat Windows");
 
     app.run(move |_app_handle, event| {
+        let _keep_lock = &instance_lock;
         if let tauri::RunEvent::ExitRequested { .. } = event {
             let mut guard = rt_run.core.lock().unwrap();
             let c = &mut *guard;
             c.timer.flush_for_quit(&c.db);
         }
     });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::acquire_single_instance_lock;
+    use uuid::Uuid;
+
+    #[test]
+    fn single_instance_lock_prevents_second_acquisition() {
+        let tmp_db =
+            std::env::temp_dir().join(format!("notchcat-lock-test-{}.sqlite", Uuid::new_v4()));
+        let first = acquire_single_instance_lock(&tmp_db);
+        assert!(first.is_some(), "first instance should acquire lock");
+
+        let second = acquire_single_instance_lock(&tmp_db);
+        assert!(
+            second.is_none(),
+            "second instance must be blocked while first holds lock"
+        );
+
+        drop(first);
+        let third = acquire_single_instance_lock(&tmp_db);
+        assert!(
+            third.is_some(),
+            "lock should be acquirable after first instance exits"
+        );
+        drop(third);
+        let _ = std::fs::remove_file(tmp_db.with_extension("lock"));
+    }
 }

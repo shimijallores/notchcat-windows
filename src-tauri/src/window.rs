@@ -352,6 +352,11 @@ pub fn spawn_background_loops(app: AppHandle, runtime: Arc<AppRuntime>) {
         let mut last_day = today_start();
         loop {
             tokio::time::sleep(Duration::from_millis(250)).await;
+            let activate_path = rt_timer.db_path.with_extension("activate");
+            if activate_path.exists() {
+                let _ = std::fs::remove_file(&activate_path);
+                open_panel(&app_timer, &rt_timer, false);
+            }
             let (changed, finished_outcome, timer_sound, linked_title, rolled_over) = {
                 let mut guard = rt_timer.core.lock().unwrap();
                 let c = &mut *guard;
