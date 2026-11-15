@@ -1,0 +1,14 @@
+:root {
+  --housing: rgb(9, 9, 10);
+  --housing-raised: rgb(29, 29, 32);
+  --mint: rgb(190, 218, 195);
+  --lavender: rgb(204, 198, 237);
+  --sand: rgb(217, 209, 156);
+  --slate: rgb(163, 181, 204);
+  --rose: rgb(237, 198, 204);
+  --ink: rgb(27, 29, 28);
+  --amber: rgb(252, 193, 80);
+  --error-ink: rgb(158, 33, 33);
+  --ok-ink: rgb(31, 102, 51);
+  --card-radius: 18px;
+}
