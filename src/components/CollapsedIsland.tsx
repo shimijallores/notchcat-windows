@@ -107,7 +107,7 @@ export const CollapsedIsland: React.FC<{ snapshot: AppSnapshot }> = ({
           className={`nc-shape ${style}`}
           onClick={handleOpen}
           aria-label="Open NotchCat"
-          title="NotchCat — hover or press Alt+N"
+          title="NotchCat — hover or press Ctrl+Space"
         />
       )}
 

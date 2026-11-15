@@ -1,13 +1,13 @@
 # NotchCat for Windows
 
-NotchCat ported from macOS to Windows in Rust, Tauri 2, and React + TypeScript. It places a subtle dark top-center floating island at the top of the primary monitor with pastel paper workspace cards, a 6-day planner, activity insights, Windows media controls, ICS calendar agenda, and optional multi-device cloud sync.
+NotchCat ported from macOS to Windows in Rust, Tauri 2, and React + TypeScript. It places a subtle dark top-center floating island at the top of the primary monitor with pastel paper workspace cards, a 7-day planner, activity insights, Windows media controls, ICS calendar agenda, and optional multi-device cloud sync.
 
 ## Features
 
-- **Top-center floating island**: Default `116x22` pill (`Island`), `Notch`, or `Off` mode with hover-to-open, click, `Alt+N` global shortcut, system tray menu, and auto-close on focus loss.
+- **Top-center floating island**: Default `116x22` pill (`Island`), `Notch`, or `Off` mode with hover-to-open, click, `Ctrl+Space` (`Alt+N` also works) global shortcut, system tray menu, and auto-close on focus loss.
 - **Collapsed live status**: Left animated Windows SMTC Now Playing chip with artwork tint and right 5x7 dot-matrix Focus countdown pill, plus compact `IslandView` banners for `Time's up` and due reminders.
 - **Workspace cards**: `Tasks` (priorities 1-3, inline editing, drag-and-drop reorder, reminder presets + custom time), `Focus Timer` (7-segment SVG display, work/break presets + custom duration, optional linked task auto-completion, WinMM synthesized chime, `WM_POWERBROADCAST` sleep/wake pause/resume), `Notepad` (debounced persistence, `/task` line conversion), `Events` (local & ICS calendar feed + Windows battery status), and `Music` (Windows Global System Media Transport Controls play/pause/prev/next + dominant pastel album tint).
-- **Week & Insights**: 6-day drag-and-drop task scheduler, 7-day SVG activity bar chart, completed/archived history with debounced search, pagination, and one-click restore to today.
+- **Week & Insights**: 7-day drag-and-drop task scheduler, 7-day SVG activity bar chart, completed/archived history with debounced search, pagination, and one-click restore to today.
 - **Account & Cloud Sync**: Two-step sign-up (access key verification + account creation), sign-in, Windows Credential Manager token storage, and offline-first dirty-field sync compatible with `notchcat-server`.
 - **Settings & Platform**: Card visibility and order customization, hover/shortcut toggles, Launch at Windows login (`HKCU\Software\Microsoft\Windows\CurrentVersion\Run`), SQLite database backup, and GitHub Releases update checker.
 

@@ -22,7 +22,9 @@ use crate::store::{add_local_days, now_ms, now_secs, today_start};
 use crate::timer::poll_due_reminders;
 
 pub const ISLAND_LABEL: &str = "island";
-pub const HOTKEY_STR: &str = "Alt+N";
+pub const HOTKEY_STR: &str = "Ctrl+Space";
+pub const ALT_HOTKEY_STR: &str = "Alt+N";
+pub const HOTKEYS: &[&str] = &[HOTKEY_STR, ALT_HOTKEY_STR];
 
 pub fn emit_snapshot(app: &AppHandle, runtime: &AppRuntime) {
     let snap = runtime.build_snapshot();
@@ -108,6 +110,10 @@ pub fn open_panel(app: &AppHandle, runtime: &AppRuntime, pin: bool) {
         ui.pinned = pin;
         ui.hover_armed = false;
         ui.exit_ticks = 0;
+        ui.ignore_cursor_dirty = true;
+        if pin {
+            ui.suppress_auto_close_until = Some(Instant::now() + Duration::from_millis(350));
+        }
     }
     if pin {
         if let Some(w) = app.get_webview_window(ISLAND_LABEL) {
@@ -141,7 +147,7 @@ pub fn toggle_panel(app: &AppHandle, runtime: &AppRuntime) {
 }
 
 pub fn setup_tray(app: &AppHandle, runtime: Arc<AppRuntime>) -> tauri::Result<()> {
-    let open_item = MenuItem::with_id(app, "open", "Open NotchCat", true, None::<&str>)?;
+    let open_item = MenuItem::with_id(app, "open", "Open NotchCat (Ctrl+Space)", true, None::<&str>)?;
     let quit_item = MenuItem::with_id(app, "quit", "Quit NotchCat", true, None::<&str>)?;
     let menu = Menu::with_items(app, &[&open_item, &quit_item])?;
 
@@ -150,7 +156,7 @@ pub fn setup_tray(app: &AppHandle, runtime: Arc<AppRuntime>) -> tauri::Result<()
 
     let mut builder = TrayIconBuilder::with_id("main-tray")
         .menu(&menu)
-        .tooltip("NotchCat")
+        .tooltip("NotchCat (Ctrl+Space)")
         .show_menu_on_left_click(false)
         .on_menu_event(move |app, event| match event.id.as_ref() {
             "open" => open_panel(app, &rt_menu, true),
@@ -185,15 +191,20 @@ pub fn setup_tray(app: &AppHandle, runtime: Arc<AppRuntime>) -> tauri::Result<()
 
 pub fn sync_hotkey_registration(app: &AppHandle, runtime: Arc<AppRuntime>, enabled: bool) {
     let gs = app.global_shortcut();
-    let _ = gs.unregister(HOTKEY_STR);
+    for hk in HOTKEYS {
+        let _ = gs.unregister(*hk);
+    }
     if !enabled {
         return;
     }
-    let _ = gs.on_shortcut(HOTKEY_STR, move |app, _shortcut, event| {
-        if event.state == ShortcutState::Pressed {
-            toggle_panel(app, &runtime);
-        }
-    });
+    for hk in HOTKEYS {
+        let rt = Arc::clone(&runtime);
+        let _ = gs.on_shortcut(*hk, move |app, _shortcut, event| {
+            if event.state == ShortcutState::Pressed {
+                toggle_panel(app, &rt);
+            }
+        });
+    }
 }
 
 /// 30Hz Win32 cursor tracker managing hover-to-open, 400ms hover-exit close, and dynamic click-through.
@@ -239,9 +250,11 @@ pub fn spawn_cursor_poller(app: AppHandle, runtime: Arc<AppRuntime>) {
 
             let mut need_emit = false;
             let desired_ignore: bool;
+            let force_ignore_sync: bool;
 
             {
                 let mut ui = runtime.ui.lock().unwrap();
+                force_ignore_sync = std::mem::replace(&mut ui.ignore_cursor_dirty, false);
                 let overlay_w = ui.overlay_w;
                 let has_modal_or_banner = ui.modal_open || ui.pending_reminder.is_some();
 
@@ -320,7 +333,7 @@ pub fn spawn_cursor_poller(app: AppHandle, runtime: Arc<AppRuntime>) {
                 }
             }
 
-            if last_ignore != Some(desired_ignore) {
+            if force_ignore_sync || last_ignore != Some(desired_ignore) {
                 let _ = win.set_ignore_cursor_events(desired_ignore);
                 last_ignore = Some(desired_ignore);
             }
@@ -631,4 +644,21 @@ unsafe extern "system" fn power_wnd_proc(
         }
     }
     DefWindowProcW(hwnd, msg, wparam, lparam)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::HOTKEYS;
+    use std::str::FromStr;
+    use tauri_plugin_global_shortcut::Shortcut;
+
+    #[test]
+    fn hotkeys_parse_cleanly() {
+        for hk in HOTKEYS {
+            assert!(
+                Shortcut::from_str(hk).is_ok(),
+                "expected global shortcut '{hk}' to parse"
+            );
+        }
+    }
 }

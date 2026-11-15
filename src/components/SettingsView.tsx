@@ -698,7 +698,7 @@ export const SettingsView: React.FC<{ snapshot: AppSnapshot }> = ({
               onChange={(v) => patch({ clickToOpen: v })}
             />
             <ToggleRow
-              title="Alt-N shortcut"
+              title="Ctrl+Space shortcut"
               icon={<Command size={12} />}
               checked={settings.hotkeyEnabled}
               onChange={(v) => patch({ hotkeyEnabled: v })}

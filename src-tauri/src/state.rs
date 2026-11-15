@@ -48,6 +48,7 @@ pub struct UiState {
     pub exit_ticks: u32,
     pub suppress_auto_close_until: Option<Instant>,
     pub overlay_w: f64,
+    pub ignore_cursor_dirty: bool,
 }
 
 impl Default for UiState {
@@ -66,6 +67,7 @@ impl Default for UiState {
             exit_ticks: 0,
             suppress_auto_close_until: None,
             overlay_w: IslandGeometry::OVERLAY_MAX_W,
+            ignore_cursor_dirty: true,
         }
     }
 }
