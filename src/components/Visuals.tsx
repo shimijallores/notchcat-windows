@@ -1,188 +1,221 @@
 import React from "react";
 
-// 5x7 dot-matrix glyphs matching Mac DotMatrix.swift
-const MATRIX_GLYPHS: Record<string, string[]> = {
-  "0": ["01110", "10001", "10011", "10101", "11001", "10001", "01110"],
-  "1": ["00100", "01100", "00100", "00100", "00100", "00100", "01110"],
-  "2": ["01110", "10001", "00001", "00110", "01000", "10000", "11111"],
-  "3": ["11110", "00001", "00001", "01110", "00001", "00001", "11110"],
-  "4": ["00010", "00110", "01010", "10010", "11111", "00010", "00010"],
-  "5": ["11111", "10000", "11110", "00001", "00001", "10001", "01110"],
-  "6": ["01110", "10000", "11110", "10001", "10001", "10001", "01110"],
-  "7": ["11111", "00001", "00010", "00100", "01000", "01000", "01000"],
-  "8": ["01110", "10001", "10001", "01110", "10001", "10001", "01110"],
-  "9": ["01110", "10001", "10001", "01111", "00001", "00001", "01110"],
-  ":": ["00", "00", "11", "00", "11", "00", "00"],
-};
+// ---------------------------------------------------------------------------
+// 5x7 dot-matrix text (port of DotMatrix.swift)
+// ---------------------------------------------------------------------------
 
-export const DotMatrixDigits: React.FC<{
+const DOT_ROWS = 7;
+
+function dotGlyph(c: string): string[] {
+  switch (c) {
+    case "0": return ["01110", "10001", "10011", "10101", "11001", "10001", "01110"];
+    case "1": return ["00100", "01100", "00100", "00100", "00100", "00100", "01110"];
+    case "2": return ["01110", "10001", "00001", "00010", "00100", "01000", "11111"];
+    case "3": return ["11110", "00001", "00001", "01110", "00001", "00001", "11110"];
+    case "4": return ["00010", "00110", "01010", "10010", "11111", "00010", "00010"];
+    case "5": return ["11111", "10000", "11110", "00001", "00001", "10001", "01110"];
+    case "6": return ["00110", "01000", "10000", "11110", "10001", "10001", "01110"];
+    case "7": return ["11111", "00001", "00010", "00100", "01000", "01000", "01000"];
+    case "8": return ["01110", "10001", "10001", "01110", "10001", "10001", "01110"];
+    case "9": return ["01110", "10001", "10001", "01111", "00001", "00010", "01100"];
+    case ":": return ["0", "1", "0", "0", "0", "1", "0"];
+    default: return Array(7).fill("00000");
+  }
+}
+
+function dotColumns(text: string): number {
+  const widths = text.split("").map((c) => dotGlyph(c)[0].length);
+  return widths.reduce((a, b) => a + b, 0) + Math.max(0, widths.length - 1);
+}
+
+/** Pitch and padding of the collapsed countdown pill, derived from its height like PillMetrics. */
+export const pillPitch = (height: number) => (height * 0.62) / DOT_ROWS;
+export const pillHPad = (height: number) => height * 0.62;
+export const pillWidth = (text: string, height: number) =>
+  dotColumns(text) * pillPitch(height) + pillHPad(height) * 2;
+
+export const DotMatrixText: React.FC<{
   text: string;
-  dotSize?: number;
-  gap?: number;
-  color?: string;
-  dimColor?: string;
-  blinkColon?: boolean;
-}> = ({
-  text,
-  dotSize = 1.6,
-  gap = 0.7,
-  color = "var(--amber)",
-  dimColor = "rgba(255,255,255,0.12)",
-  blinkColon = false,
-}) => {
-  const step = dotSize + gap;
-  let offsetX = 0;
-  const circles: React.ReactNode[] = [];
-  const chars = text.split("");
-
-  chars.forEach((ch, ci) => {
-    const glyph = MATRIX_GLYPHS[ch] ?? MATRIX_GLYPHS["0"];
-    const cols = glyph[0].length;
-    const isColon = ch === ":";
-    for (let r = 0; r < 7; r++) {
-      for (let c = 0; c < cols; c++) {
-        const lit = glyph[r][c] === "1";
-        circles.push(
+  pitch: number;
+  lit?: string;
+  unlitOpacity?: number;
+}> = ({ text, pitch, lit = "#fff", unlitOpacity = 0.1 }) => {
+  const cols = dotColumns(text);
+  const radius = pitch * 0.36;
+  const height = DOT_ROWS * pitch;
+  const dots: React.ReactNode[] = [];
+  let col = 0;
+  text.split("").forEach((ch, ci) => {
+    const glyph = dotGlyph(ch);
+    const w = glyph[0].length;
+    glyph.forEach((row, r) => {
+      row.split("").forEach((bit, c) => {
+        const on = bit === "1";
+        if (!on && w <= 1) return;
+        dots.push(
           <circle
             key={`${ci}-${r}-${c}`}
-            cx={offsetX + c * step + dotSize / 2}
-            cy={r * step + dotSize / 2}
-            r={dotSize / 2}
-            fill={lit ? color : dimColor}
-            className={lit && isColon && blinkColon ? "nc-blink-colon" : undefined}
+            cx={(col + c + 0.5) * pitch}
+            cy={(r + 0.5) * pitch}
+            r={radius}
+            fill={lit}
+            fillOpacity={on ? 1 : unlitOpacity}
           />,
         );
-      }
-    }
-    offsetX += cols * step + (ci < chars.length - 1 ? step * 0.7 : 0);
+      });
+    });
+    col += w + 1;
   });
-
-  const width = Math.max(1, offsetX - gap);
-  const height = 7 * step - gap;
-
   return (
     <svg
-      width={width}
+      width={cols * pitch}
       height={height}
-      viewBox={`0 0 ${width} ${height}`}
-      className="nc-dot-matrix"
+      viewBox={`0 0 ${cols * pitch} ${height}`}
+      style={{ display: "block", flexShrink: 0 }}
       aria-label={text}
     >
-      {circles}
+      {dots}
     </svg>
   );
 };
 
-// Classic 7-segment polygon mapping (segments A-G)
-const SEG_MAP: Record<string, boolean[]> = {
-  "0": [true, true, true, true, true, true, false],
-  "1": [false, true, true, false, false, false, false],
-  "2": [true, true, false, true, true, false, true],
-  "3": [true, true, true, true, false, false, true],
-  "4": [false, true, true, false, false, true, true],
-  "5": [true, false, true, true, false, true, true],
-  "6": [true, false, true, true, true, true, true],
-  "7": [true, true, true, false, false, false, false],
-  "8": [true, true, true, true, true, true, true],
-  "9": [true, true, true, true, false, true, true],
+// ---------------------------------------------------------------------------
+// Seven-segment clock (port of SevenSegment.swift: slanted, tapered segments)
+// ---------------------------------------------------------------------------
+
+const SEG_RATIO = 0.52;
+const SEG_SPACING = 0.11;
+const SEG_COLON = 0.2;
+const SEG_SKEW = 0.1;
+
+const SEG_MASK: Record<string, number> = {
+  "0": 0b0111111,
+  "1": 0b0000110,
+  "2": 0b1011011,
+  "3": 0b1001111,
+  "4": 0b1100110,
+  "5": 0b1101101,
+  "6": 0b1111101,
+  "7": 0b0000111,
+  "8": 0b1111111,
+  "9": 0b1101111,
 };
 
-const SevenSegDigit: React.FC<{
-  ch: string;
-  litColor: string;
-  dimColor: string;
-}> = ({ ch, litColor, dimColor }) => {
-  const segs = SEG_MAP[ch] ?? SEG_MAP["0"];
-  const paths = [
-    // A (top horizontal)
-    "M 3,1.5 L 15,1.5 L 13,4 L 5,4 Z",
-    // B (top-right vertical)
-    "M 15.5,2 L 15.5,14 L 13,12.5 L 13,4.5 Z",
-    // C (bottom-right vertical)
-    "M 15.5,15 L 15.5,27 L 13,24.5 L 13,16.5 Z",
-    // D (bottom horizontal)
-    "M 3,27.5 L 5,25 L 13,25 L 15,27.5 Z",
-    // E (bottom-left vertical)
-    "M 2.5,15 L 5,16.5 L 5,24.5 L 2.5,27 Z",
-    // F (top-left vertical)
-    "M 2.5,2 L 5,4.5 L 5,12.5 L 2.5,14 Z",
-    // G (middle horizontal)
-    "M 3.2,14.5 L 5,13 L 13,13 L 14.8,14.5 L 13,16 L 5,16 Z",
-  ];
-  return (
-    <svg width="21" height="34" viewBox="0 0 18 29" style={{ display: "block" }}>
-      {paths.map((d, idx) => (
-        <path key={idx} d={d} fill={segs[idx] ? litColor : dimColor} />
-      ))}
-    </svg>
-  );
-};
+const hSeg = (x0: number, x1: number, y: number, t: number) =>
+  `M${x0},${y} L${x0 + t / 2},${y - t / 2} L${x1 - t / 2},${y - t / 2} L${x1},${y} L${x1 - t / 2},${y + t / 2} L${x0 + t / 2},${y + t / 2} Z`;
+const vSeg = (x: number, y0: number, y1: number, t: number) =>
+  `M${x},${y0} L${x + t / 2},${y0 + t / 2} L${x + t / 2},${y1 - t / 2} L${x},${y1} L${x - t / 2},${y1 - t / 2} L${x - t / 2},${y0 + t / 2} Z`;
+
+function segmentPath(i: number, w: number, h: number, t: number, x: number): string {
+  const gap = t * 0.18;
+  const left = x + t / 2;
+  const right = x + w - t / 2;
+  const top = t / 2;
+  const mid = h / 2;
+  const bottom = h - t / 2;
+  switch (i) {
+    case 0: return hSeg(left + gap, right - gap, top, t);
+    case 1: return vSeg(right, top + gap, mid - gap, t);
+    case 2: return vSeg(right, mid + gap, bottom - gap, t);
+    case 3: return hSeg(left + gap, right - gap, bottom, t);
+    case 4: return vSeg(left, mid + gap, bottom - gap, t);
+    case 5: return vSeg(left, top + gap, mid - gap, t);
+    default: return hSeg(left + gap, right - gap, mid, t);
+  }
+}
 
 export const SevenSegmentClock: React.FC<{
   text: string;
-  litColor?: string;
-  dimColor?: string;
+  maxHeight?: number;
+  color?: string;
+  dim?: boolean;
   onClick?: () => void;
   title?: string;
-}> = ({
-  text,
-  litColor = "var(--ink)",
-  dimColor = "rgba(27,29,28,0.09)",
-  onClick,
-  title,
-}) => {
+}> = ({ text, maxHeight = 66, color = "var(--ink)", dim = false, onClick, title }) => {
+  const chars = text.split("");
+  let unit = SEG_SKEW;
+  chars.forEach((ch, i) => {
+    unit += ch === ":" ? SEG_COLON : SEG_RATIO;
+    if (i < chars.length - 1) unit += SEG_SPACING;
+  });
+
+  // Draw at a fixed internal height; CSS scales the SVG to the card.
+  const H = 100;
+  const t = H * 0.13;
+  const shapes: React.ReactNode[] = [];
+  let x = 0;
+  chars.forEach((ch, ci) => {
+    if (ch === ":") {
+      const w = H * SEG_COLON;
+      const d = t * 1.05;
+      [0.32, 0.68].forEach((fy) => {
+        shapes.push(
+          <rect
+            key={`${ci}-${fy}`}
+            x={x + (w - d) / 2}
+            y={H * fy - d / 2}
+            width={d}
+            height={d}
+            rx={d * 0.2}
+            fill={color}
+          />,
+        );
+      });
+      x += w + H * SEG_SPACING;
+    } else {
+      const w = H * SEG_RATIO;
+      const mask = SEG_MASK[ch] ?? 0;
+      for (let s = 0; s < 7; s++) {
+        shapes.push(
+          <path
+            key={`${ci}-${s}`}
+            d={segmentPath(s, w, H, t, x)}
+            fill={color}
+            fillOpacity={mask & (1 << s) ? 1 : 0.07}
+          />,
+        );
+      }
+      x += w + H * SEG_SPACING;
+    }
+  });
+
+  const width = unit * H;
   return (
-    <div
+    <svg
       className="nc-seven-seg"
+      viewBox={`0 0 ${width} ${H}`}
+      style={{
+        width: "100%",
+        maxHeight,
+        height: maxHeight,
+        opacity: dim ? 0.55 : 1,
+        cursor: onClick ? "pointer" : "default",
+      }}
+      preserveAspectRatio="xMidYMid meet"
       onClick={onClick}
-      title={title}
-      style={{ cursor: onClick ? "pointer" : "default" }}
     >
-      {text.split("").map((ch, idx) =>
-        ch === ":" ? (
-          <svg
-            key={idx}
-            width="8"
-            height="34"
-            viewBox="0 0 8 29"
-            style={{ display: "block" }}
-          >
-            <circle cx="4" cy="10" r="1.9" fill={litColor} />
-            <circle cx="4" cy="19.5" r="1.9" fill={litColor} />
-          </svg>
-        ) : (
-          <SevenSegDigit
-            key={idx}
-            ch={ch}
-            litColor={litColor}
-            dimColor={dimColor}
-          />
-        ),
-      )}
-    </div>
+      {title && <title>{title}</title>}
+      <g transform={`matrix(1 0 ${-SEG_SKEW} 1 ${SEG_SKEW * H} 0)`}>{shapes}</g>
+    </svg>
   );
 };
 
+// ---------------------------------------------------------------------------
+// Paper card
+// ---------------------------------------------------------------------------
+
 export const PaperCard: React.FC<{
-  title: string;
   bg: string;
-  width: number;
   grain: boolean;
-  headerRight?: React.ReactNode;
-  children: React.ReactNode;
+  weight?: number;
   className?: string;
-}> = ({ title, bg, width, grain, headerRight, children, className }) => {
-  return (
-    <section
-      className={`nc-paper-card ${className ?? ""}`}
-      style={{ background: bg, width }}
-    >
-      {grain && <div className="nc-paper-grain" aria-hidden="true" />}
-      <header className="nc-card-header">
-        <span className="nc-card-title">{title}</span>
-        {headerRight && <div className="nc-card-header-right">{headerRight}</div>}
-      </header>
-      <div className="nc-card-body">{children}</div>
-    </section>
-  );
-};
+  children: React.ReactNode;
+}> = ({ bg, grain, weight = 1, className, children }) => (
+  <section
+    className={`nc-paper-card ${className ?? ""}`}
+    style={{ background: bg, flex: `${weight} 1 0`, transition: "background 300ms ease-out" }}
+  >
+    {grain && <div className="nc-paper-grain" aria-hidden="true" />}
+    <div className="nc-card-body">{children}</div>
+  </section>
+);

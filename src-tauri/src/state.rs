@@ -347,8 +347,8 @@ impl AppRuntime {
             let settings_data = core.settings.data.clone();
             let today_tasks = core.tasks.visible_tasks(TaskDay::Today);
             let tomorrow_tasks = core.tasks.visible_tasks(TaskDay::Tomorrow);
-            let mut week_days = Vec::with_capacity(6);
-            for offset in 0..6 {
+            let mut week_days = Vec::with_capacity(7);
+            for offset in 0..7 {
                 let d = add_local_days(today, offset);
                 week_days.push(WeekDaySnapshot {
                     day: d,

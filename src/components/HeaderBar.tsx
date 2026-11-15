@@ -1,11 +1,65 @@
 import React from "react";
+import {
+  BatteryCharging,
+  BatteryFull,
+  BatteryLow,
+  BatteryMedium,
+  Check,
+  CircleArrowDown,
+  Settings,
+  X,
+} from "lucide-react";
 import mascotUrl from "../assets/mascot.png";
 import { api } from "../api";
 import type { AppSnapshot, TabID } from "../types";
 
-export const HeaderBar: React.FC<{ snapshot: AppSnapshot }> = ({
-  snapshot,
+export const ReminderButtons: React.FC<{
+  snoozeMinutes: number;
+  onSnooze: () => void;
+  onDone: () => void;
+}> = ({ snoozeMinutes, onSnooze, onDone }) => (
+  <div className="nc-reminder-buttons">
+    <button className="nc-snooze" onClick={onSnooze}>
+      <b>zZ</b>
+      <span>{snoozeMinutes} min</span>
+    </button>
+    <button className="nc-done" onClick={onDone}>
+      <Check size={11} strokeWidth={3.5} />
+      <span>Done</span>
+    </button>
+  </div>
+);
+
+const BatteryView: React.FC<{ percent: number; charging: boolean }> = ({
+  percent,
+  charging,
 }) => {
+  const low = percent <= 20 && !charging;
+  const Icon = charging
+    ? BatteryCharging
+    : percent >= 88
+      ? BatteryFull
+      : percent >= 38
+        ? BatteryMedium
+        : BatteryLow;
+  const color = low
+    ? "rgb(255,107,102)"
+    : charging
+      ? "rgb(115,230,140)"
+      : "rgba(255,255,255,0.7)";
+  return (
+    <span
+      className="nc-battery"
+      style={{ color }}
+      title={charging ? "Charging" : "On battery"}
+    >
+      <Icon size={16} strokeWidth={1.8} />
+      <span>{percent}%</span>
+    </span>
+  );
+};
+
+export const HeaderBar: React.FC<{ snapshot: AppSnapshot }> = ({ snapshot }) => {
   const { ui, settings, battery, sync, updateAvailable } = snapshot;
 
   const tabs: { id: TabID; label: string; visible: boolean }[] = [
@@ -13,153 +67,92 @@ export const HeaderBar: React.FC<{ snapshot: AppSnapshot }> = ({
     { id: "week", label: "Week", visible: settings.showWeekTab },
     { id: "insights", label: "Insights", visible: settings.showInsightsTab },
   ];
-
-  const syncDotClass =
-    sync.phase.kind === "signed_out"
-      ? "off"
-      : sync.phase.kind === "syncing"
-        ? "syncing"
-        : sync.phase.kind === "failed" || sync.phase.kind === "revoked"
-          ? "err"
-          : sync.phase.kind === "offline"
-            ? "warn"
-            : "ok";
+  const syncProblem =
+    sync.phase.kind === "failed" ||
+    sync.phase.kind === "revoked" ||
+    sync.phase.kind === "offline";
 
   return (
     <>
       <header className="nc-header">
         <div className="nc-header-left">
-          <button
-            className="nc-brand"
-            onClick={() => api.setTab("workspace")}
-            title="NotchCat"
-          >
-            <img src={mascotUrl} alt="NotchCat" className="nc-brand-icon" />
-            <span className="nc-brand-name">NotchCat</span>
-          </button>
-
-          <nav className="nc-tabs" aria-label="Main navigation">
-            {tabs
-              .filter((t) => t.visible)
-              .map((t) => (
-                <button
-                  key={t.id}
-                  className={`nc-tab-btn ${ui.tab === t.id ? "active" : ""}`}
-                  onClick={() => api.setTab(t.id)}
-                >
-                  {t.label}
-                </button>
-              ))}
-          </nav>
-        </div>
-
-        <div className="nc-header-right">
-          {updateAvailable && (
+          <img src={mascotUrl} alt="" className="nc-brand-icon" />
+          <span className="nc-brand-name">NotchCat</span>
+          {settings.showBattery && battery.percent !== null && (
+            <BatteryView percent={battery.percent} charging={battery.charging} />
+          )}
+          {settings.checkForUpdates && updateAvailable && (
             <button
               className="nc-update-pill"
-              onClick={() => api.openUrl(updateAvailable.url)}
-              title={`Update ${updateAvailable.version} ready`}
+              onClick={() => {
+                api.openUrl(updateAvailable.url);
+                api.closeTray();
+              }}
+              title={`NotchCat ${updateAvailable.version} is out. Opens the download page on GitHub.`}
             >
-              ↑ v{updateAvailable.version}
+              <CircleArrowDown size={11} fill="currentColor" stroke="var(--amber)" />
+              Update available
             </button>
           )}
+        </div>
 
-          {sync.phase.kind !== "signed_out" && (
+        <div className="nc-notch-gap" />
+
+        <nav className="nc-header-right" aria-label="Main navigation">
+          {syncProblem && (
             <button
-              className="nc-sync-pill"
-              onClick={() =>
-                sync.phase.kind === "idle"
-                  ? api.syncNow()
-                  : api.setTab("settings")
-              }
+              className="nc-sync-warn"
+              onClick={() => api.setTab("settings")}
               title={
                 sync.phase.kind === "failed"
                   ? sync.phase.message
-                  : `Sync: ${sync.phase.kind}${sync.pendingCount > 0 ? ` (${sync.pendingCount} pending)` : ""}`
+                  : `Sync ${sync.phase.kind}`
               }
-            >
-              <span className={`nc-sync-dot ${syncDotClass}`} />
-              {sync.pendingCount > 0 && (
-                <span className="nc-sync-pending">{sync.pendingCount}</span>
-              )}
-            </button>
+            />
           )}
-
-          {settings.showBattery && battery.percent !== null && (
-            <div
-              className="nc-battery"
-              title={battery.charging ? "Charging" : "On battery"}
-            >
-              <span className="nc-battery-shell">
-                <span
-                  className="nc-battery-fill"
-                  style={{
-                    width: `${Math.max(8, Math.min(100, battery.percent))}%`,
-                    background:
-                      battery.charging
-                        ? "#6cd97c"
-                        : battery.percent <= 20
-                          ? "#ff6b6b"
-                          : "rgba(255,255,255,0.85)",
-                  }}
-                />
-              </span>
-              <span>
-                {battery.percent}%{battery.charging ? "⚡" : ""}
-              </span>
-            </div>
-          )}
-
+          {tabs
+            .filter((t) => t.visible)
+            .map((t) => (
+              <button
+                key={t.id}
+                className={`nc-tab ${ui.tab === t.id ? "active" : ""}`}
+                onClick={() => api.setTab(t.id)}
+              >
+                {t.label}
+              </button>
+            ))}
           <button
-            className={`nc-icon-btn ${ui.tab === "settings" ? "active" : ""}`}
-            onClick={() =>
-              api.setTab(ui.tab === "settings" ? "workspace" : "settings")
-            }
+            className={`nc-gear ${ui.tab === "settings" ? "active" : ""}`}
+            onClick={() => api.setTab("settings")}
             title="Settings"
             aria-label="Settings"
           >
-            ⚙
+            <Settings size={13} fill="currentColor" strokeWidth={2} />
           </button>
-
-          <button
-            className="nc-icon-btn"
-            onClick={() => api.closeTray()}
-            title="Collapse (Esc)"
-            aria-label="Collapse"
-          >
-            ✕
-          </button>
-        </div>
+        </nav>
       </header>
 
       {ui.pendingReminder && (
-        <div className="nc-inpanel-reminder">
-          <div className="nc-inpanel-reminder-left">
-            <span className="nc-reminder-dot" />
-            <span className="nc-inpanel-reminder-title">
-              Reminder: <strong>{ui.pendingReminder.title}</strong>
-            </span>
+        <div className="nc-banner">
+          <img src={mascotUrl} alt="" width={26} height={26} />
+          <div className="nc-banner-text">
+            <b>{ui.pendingReminder.title}</b>
+            <span>Reminder</span>
           </div>
-          <div className="nc-inpanel-reminder-actions">
-            <button
-              className="nc-mini-btn primary"
-              onClick={() => api.reminderComplete(ui.pendingReminder!.id)}
-            >
-              Done
-            </button>
-            <button
-              className="nc-mini-btn"
-              onClick={() => api.reminderSnooze(ui.pendingReminder!.id)}
-            >
-              Snooze {settings.snoozeMinutes}m
-            </button>
-            <button
-              className="nc-mini-btn"
-              onClick={() => api.reminderDismiss()}
-            >
-              Dismiss
-            </button>
-          </div>
+          <span style={{ flex: 1 }} />
+          <ReminderButtons
+            snoozeMinutes={settings.snoozeMinutes}
+            onSnooze={() => api.reminderSnooze(ui.pendingReminder!.id)}
+            onDone={() => api.reminderComplete(ui.pendingReminder!.id)}
+          />
+          <button
+            className="nc-banner-x"
+            onClick={() => api.reminderDismiss()}
+            title="Dismiss"
+            aria-label="Dismiss"
+          >
+            <X size={12} strokeWidth={2.5} />
+          </button>
         </div>
       )}
     </>

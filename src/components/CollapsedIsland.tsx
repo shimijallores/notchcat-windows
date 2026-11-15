@@ -1,164 +1,154 @@
 import React from "react";
+import { Music2 } from "lucide-react";
+import mascotUrl from "../assets/mascot.png";
 import { api } from "../api";
 import type { AppSnapshot } from "../types";
 import { formatClock } from "../useNotchCat";
-import { DotMatrixDigits } from "./Visuals";
+import { ReminderButtons } from "./HeaderBar";
+import { DotMatrixText, pillPitch, pillWidth } from "./Visuals";
+
+const ISLAND_W = 116;
+const SHAPE_H = 22;
+const GAP = 8;
+const CHIP_W = 46;
+
+const EqualizerBars: React.FC<{ playing: boolean }> = ({ playing }) => (
+  <span className={`nc-eq ${playing ? "playing" : ""}`} aria-hidden="true">
+    <i />
+    <i />
+    <i />
+  </span>
+);
 
 export const CollapsedIsland: React.FC<{ snapshot: AppSnapshot }> = ({
   snapshot,
 }) => {
   const { ui, timer, music, settings } = snapshot;
   const style = settings.fakeNotch;
-
-  const showPill =
-    settings.showPill &&
-    (timer.state !== "idle");
-  const showChip =
-    (settings.showMusicChip ||
-      settings.cards.some((c) => c.card === "music" && c.enabled)) &&
-    music.track !== null &&
-    music.track.playing;
-
-  const handleOpen = () => {
-    if (settings.clickToOpen || style === "island") {
-      api.openTray(true);
-    }
-  };
+  const top = style === "notch" ? 0 : 3;
 
   if (ui.compact) {
+    const c = ui.compact;
+    const title = c.kind === "timesUp" ? "Time's up" : c.title;
+    const subtitle =
+      c.kind === "timesUp" ? (c.taskTitle ?? "Session complete") : "Reminder";
     return (
-      <div
-        className={`nc-compact-wrap ${style === "notch" ? "is-notch" : "is-island"}`}
-      >
-        {ui.compact.kind === "timesUp" ? (
-          <div className="nc-compact-banner">
-            <div className="nc-compact-left">
-              <span className="nc-compact-badge">
-                <DotMatrixDigits text="00:00" dotSize={1.5} gap={0.6} />
-              </span>
-              <div className="nc-compact-text">
-                <span className="nc-compact-title">Time&apos;s up</span>
-                {ui.compact.taskTitle && (
-                  <span className="nc-compact-sub">{ui.compact.taskTitle}</span>
-                )}
-              </div>
-            </div>
-            <div className="nc-compact-actions">
-              <button
-                className="nc-compact-btn"
-                onClick={() => api.timerAddTime(60)}
-              >
-                +1m
-              </button>
-              <button
-                className="nc-compact-btn"
-                onClick={() => api.timerAddTime(300)}
-              >
-                +5m
-              </button>
-              <button
-                className="nc-compact-btn primary"
-                onClick={() => api.timerReset()}
-              >
-                Done
-              </button>
-            </div>
+      <div className="nc-compact">
+        <div className="nc-compact-row">
+          <img src={mascotUrl} alt="" width={34} height={34} />
+          <div className="nc-compact-text">
+            <b>{title}</b>
+            <span>{subtitle}</span>
           </div>
-        ) : (
-          <div className="nc-compact-banner">
-            <div className="nc-compact-left">
-              <span className="nc-reminder-dot" />
-              <div className="nc-compact-text">
-                <span className="nc-compact-title">{ui.compact.title}</span>
-                <span className="nc-compact-sub">Reminder due</span>
-              </div>
-            </div>
-            <div className="nc-compact-actions">
+          <span style={{ flex: 1 }} />
+          {c.kind === "timesUp" ? (
+            <div className="nc-reminder-buttons">
               <button
-                className="nc-compact-btn primary"
-                onClick={() => api.reminderComplete(ui.compact!.kind === "reminder" ? ui.compact!.taskId : "")}
+                className="nc-snooze"
+                onClick={() => {
+                  api.timerAddTime(300);
+                  api.dismissCompact();
+                }}
               >
-                Done
+                <span>+5 min</span>
               </button>
               <button
-                className="nc-compact-btn"
-                onClick={() => api.reminderSnooze(ui.compact!.kind === "reminder" ? ui.compact!.taskId : "")}
+                className="nc-done"
+                onClick={() => {
+                  api.timerReset();
+                  api.dismissCompact();
+                }}
               >
-                Snooze {settings.snoozeMinutes}m
-              </button>
-              <button
-                className="nc-compact-btn"
-                onClick={() => api.reminderDismiss()}
-              >
-                ×
+                <span>Done</span>
               </button>
             </div>
-          </div>
-        )}
+          ) : (
+            <ReminderButtons
+              snoozeMinutes={settings.snoozeMinutes}
+              onSnooze={() => api.reminderSnooze(c.taskId)}
+              onDone={() => api.reminderComplete(c.taskId)}
+            />
+          )}
+        </div>
       </div>
     );
   }
 
+  const showPill = settings.showPill && timer.state !== "idle";
+  const track = music.track;
+  const showChip =
+    (settings.showMusicChip ||
+      settings.cards.some((c) => c.card === "music" && c.enabled)) &&
+    track !== null &&
+    track.playing;
+
+  const handleOpen = () => {
+    if (settings.clickToOpen || style === "island") api.openTray(true);
+  };
+
+  const clock = formatClock(timer.remaining);
+  const pw = pillWidth(clock, SHAPE_H);
+  const finished = timer.state === "finished";
+  const paused = timer.state === "paused";
+
+  // Offsets are relative to the screen's horizontal center.
+  const pillLeft = style === "off" ? -pw / 2 : ISLAND_W / 2 + GAP;
+  const chipRight =
+    style === "off"
+      ? showPill
+        ? -pw / 2 - GAP
+        : CHIP_W / 2
+      : -ISLAND_W / 2 - GAP;
+
   return (
-    <div
-      className={`nc-collapsed-bar ${style === "notch" ? "is-notch" : "is-island"}`}
-    >
-      {/* Left Music Chip */}
-      <div className="nc-collapsed-slot left">
-        {showChip && music.track && (
-          <button
-            className="nc-music-chip"
-            onClick={handleOpen}
-            title={`${music.track.title} — ${music.track.artist}`}
-          >
-            <span className="nc-eq-bars" aria-hidden="true">
-              <i />
-              <i />
-              <i />
-            </span>
-            <span className="nc-music-chip-title">{music.track.title}</span>
-          </button>
-        )}
-      </div>
+    <div className="nc-collapsed" style={{ top }}>
+      {style !== "off" && (
+        <button
+          className={`nc-shape ${style}`}
+          onClick={handleOpen}
+          aria-label="Open NotchCat"
+          title="NotchCat — hover or press Alt+N"
+        />
+      )}
 
-      {/* Center Top Island / Notch Shape */}
-      <div className="nc-collapsed-slot center">
-        {style !== "off" && (
-          <button
-            className={`nc-island-pill ${style === "notch" ? "notch-shape" : "island-shape"}`}
-            onClick={handleOpen}
-            aria-label="Open NotchCat"
-            title="NotchCat — Hover or Alt+N to open"
-          >
-            <span className="nc-island-camera-dot" />
-          </button>
-        )}
-      </div>
+      {showChip && track && (
+        <button
+          className="nc-chip"
+          style={{ left: chipRight - CHIP_W }}
+          onClick={handleOpen}
+          title={`${track.title} — ${track.artist}`}
+        >
+          <span className="nc-chip-art">
+            {track.artworkDataUrl ? (
+              <img src={track.artworkDataUrl} alt="" />
+            ) : (
+              <Music2 size={9} />
+            )}
+          </span>
+          <EqualizerBars playing={track.playing} />
+        </button>
+      )}
 
-      {/* Right Dot-Matrix Timer Pill */}
-      <div className="nc-collapsed-slot right">
-        {showPill && (
-          <button
-            className={`nc-timer-pill ${timer.state}`}
-            onClick={handleOpen}
-            title="Focus timer active"
+      {showPill && (
+        <button
+          className="nc-pill"
+          style={{ left: pillLeft, width: pw }}
+          onClick={handleOpen}
+          title="Focus timer"
+        >
+          <span
+            className={finished ? "nc-blink" : undefined}
+            style={{ opacity: paused ? 0.55 : 1, display: "flex" }}
           >
-            <DotMatrixDigits
-              text={formatClock(timer.remaining)}
-              dotSize={1.45}
-              gap={0.55}
-              color={
-                timer.state === "paused"
-                  ? "rgba(252,193,80,0.62)"
-                  : timer.state === "finished"
-                    ? "#ff7b7b"
-                    : "var(--amber)"
-              }
-              blinkColon={timer.state === "running"}
+            <DotMatrixText
+              text={clock}
+              pitch={pillPitch(SHAPE_H)}
+              lit={finished ? "var(--amber)" : "#fff"}
+              unlitOpacity={0.09}
             />
-          </button>
-        )}
-      </div>
+          </span>
+        </button>
+      )}
     </div>
   );
 };

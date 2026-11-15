@@ -15,7 +15,7 @@ export const App: React.FC = () => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape" && snapshot?.ui.isOpen) {
         // Modals/inputs with custom Escape handlers call stopPropagation();
-        // reaching document means closing the main tray itself.
+        // reaching here means closing the main tray itself.
         api.closeTray();
       }
     };
@@ -27,8 +27,7 @@ export const App: React.FC = () => {
     return null;
   }
 
-  const { ui, settings } = snapshot;
-  const isIsland = settings.fakeNotch === "island";
+  const { ui } = snapshot;
 
   const handleShellPointerDown = () => {
     if (ui.isOpen && !ui.pinned) {
@@ -42,11 +41,8 @@ export const App: React.FC = () => {
         <CollapsedIsland snapshot={snapshot} />
       ) : (
         <main
-          className={`nc-tray ${isIsland ? "island-mode" : "notch-mode"}`}
-          style={{
-            width: ui.panelW,
-            height: ui.panelH,
-          }}
+          className="nc-tray"
+          style={{ width: ui.panelW, height: ui.panelH }}
           onPointerDown={handleShellPointerDown}
         >
           <HeaderBar snapshot={snapshot} />

@@ -67,15 +67,15 @@ impl IslandGeometry {
     pub const ISLAND_W: f64 = 116.0;
     pub const ISLAND_H: f64 = 22.0;
     pub const ISLAND_TOP_MARGIN: f64 = 3.0;
-    pub const PILL_W: f64 = 58.0;
+    pub const PILL_W: f64 = 76.0;
     pub const PILL_H: f64 = 22.0;
-    pub const PILL_GAP: f64 = 6.0;
-    pub const CHIP_W: f64 = 76.0;
+    pub const PILL_GAP: f64 = 8.0;
+    pub const CHIP_W: f64 = 46.0;
     pub const CHIP_H: f64 = 22.0;
-    pub const CHIP_GAP: f64 = 6.0;
-    pub const COMPACT_W: f64 = 340.0;
-    pub const COMPACT_H: f64 = 48.0;
-    pub const PANEL_H: f64 = 326.0;
+    pub const CHIP_GAP: f64 = 8.0;
+    pub const COMPACT_W: f64 = 440.0;
+    pub const COMPACT_H: f64 = 68.0;
+    pub const PANEL_H: f64 = 352.0;
     pub const MODAL_EXTRA_H: f64 = 36.0;
     pub const OVERLAY_MAX_W: f64 = 1340.0;
     pub const OVERLAY_H: f64 = 430.0;
@@ -188,14 +188,14 @@ impl IslandGeometry {
 
     pub fn expanded_rect(
         screen_w: f64,
-        style: FakeNotchStyle,
+        _style: FakeNotchStyle,
         tab: Tab,
         visible_cards: &[CardID],
         has_banner_or_modal: bool,
     ) -> Rect {
         let w = Self::desired_panel_width(tab, visible_cards, screen_w);
         let h = Self::PANEL_H + if has_banner_or_modal { Self::MODAL_EXTRA_H } else { 0.0 };
-        let y = if style == FakeNotchStyle::Notch { 0.0 } else { 4.0 };
+        let y = 0.0;
         let x = (screen_w - w) * 0.5;
         Rect::new(x, y, w, h)
     }

@@ -1,5 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
+import "@fontsource-variable/inter";
+import "@fontsource-variable/nunito";
 import "./tokens.css";
 import "./app.css";
 import { App } from "./App";
