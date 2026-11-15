@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Music2 } from "lucide-react";
 import mascotUrl from "../assets/mascot.png";
 import { api } from "../api";
@@ -11,6 +11,37 @@ const ISLAND_W = 116;
 const SHAPE_H = 22;
 const GAP = 8;
 const CHIP_W = 46;
+
+function useAnimatedPresence<T>(value: T | null, delayMs = 220) {
+  const active = value !== null;
+  const lastRef = useRef<T | null>(value);
+  if (value !== null) {
+    lastRef.current = value;
+  }
+  const [mounted, setMounted] = useState(active);
+  const [closing, setClosing] = useState(false);
+
+  useEffect(() => {
+    if (active) {
+      setMounted(true);
+      setClosing(false);
+      return;
+    }
+    if (!mounted) return;
+    setClosing(true);
+    const id = window.setTimeout(() => {
+      setMounted(false);
+      setClosing(false);
+      lastRef.current = null;
+    }, delayMs);
+    return () => window.clearTimeout(id);
+  }, [active, delayMs, mounted]);
+
+  return {
+    item: value ?? (mounted ? lastRef.current : null),
+    closing: !active && mounted && closing,
+  };
+}
 
 const EqualizerBars: React.FC<{ playing: boolean }> = ({ playing }) => (
   <span className={`nc-eq ${playing ? "playing" : ""}`} aria-hidden="true">
@@ -27,13 +58,28 @@ export const CollapsedIsland: React.FC<{ snapshot: AppSnapshot }> = ({
   const style = settings.fakeNotch;
   const top = style === "notch" ? 0 : 3;
 
-  if (ui.compact) {
-    const c = ui.compact;
+  const compactPresence = useAnimatedPresence(ui.compact, 220);
+
+  const showPill = settings.showPill && timer.state !== "idle";
+  const track = music.track;
+  const showChip = settings.showMusicChip && track !== null && track.playing;
+
+  const pillPresence = useAnimatedPresence(
+    ui.compact === null && showPill ? timer : null,
+    220,
+  );
+  const chipPresence = useAnimatedPresence(
+    ui.compact === null && showChip ? track : null,
+    220,
+  );
+
+  if (compactPresence.item) {
+    const c = compactPresence.item;
     const title = c.kind === "timesUp" ? "Time's up" : c.title;
     const subtitle =
       c.kind === "timesUp" ? (c.taskTitle ?? "Session complete") : "Reminder";
     return (
-      <div className="nc-compact">
+      <div className={`nc-compact ${compactPresence.closing ? "closing" : ""}`}>
         <div className="nc-compact-row">
           <img src={mascotUrl} alt="" width={34} height={34} />
           <div className="nc-compact-text">
@@ -74,24 +120,22 @@ export const CollapsedIsland: React.FC<{ snapshot: AppSnapshot }> = ({
     );
   }
 
-  const showPill = settings.showPill && timer.state !== "idle";
-  const track = music.track;
-  const showChip = settings.showMusicChip && track !== null && track.playing;
-
   const handleOpen = () => {
     if (settings.clickToOpen || style === "island") api.openTray(true);
   };
 
-  const clock = formatClock(timer.remaining);
+  const activeTimer = pillPresence.item ?? timer;
+  const activeTrack = chipPresence.item;
+  const clock = formatClock(activeTimer.remaining);
   const pw = pillWidth(clock, SHAPE_H);
-  const finished = timer.state === "finished";
-  const paused = timer.state === "paused";
+  const finished = activeTimer.state === "finished";
+  const paused = activeTimer.state === "paused";
 
   // Offsets are relative to the screen's horizontal center.
   const pillLeft = style === "off" ? -pw / 2 : ISLAND_W / 2 + GAP;
   const chipRight =
     style === "off"
-      ? showPill
+      ? pillPresence.item
         ? -pw / 2 - GAP
         : CHIP_W / 2
       : -ISLAND_W / 2 - GAP;
@@ -107,27 +151,27 @@ export const CollapsedIsland: React.FC<{ snapshot: AppSnapshot }> = ({
         />
       )}
 
-      {showChip && track && (
+      {activeTrack && (
         <button
-          className="nc-chip"
+          className={`nc-chip ${chipPresence.closing ? "closing" : ""}`}
           style={{ left: chipRight - CHIP_W }}
           onClick={handleOpen}
-          title={`${track.title} — ${track.artist}`}
+          title={`${activeTrack.title} — ${activeTrack.artist}`}
         >
           <span className="nc-chip-art">
-            {track.artworkDataUrl ? (
-              <img src={track.artworkDataUrl} alt="" />
+            {activeTrack.artworkDataUrl ? (
+              <img src={activeTrack.artworkDataUrl} alt="" />
             ) : (
               <Music2 size={9} />
             )}
           </span>
-          <EqualizerBars playing={track.playing} />
+          <EqualizerBars playing={activeTrack.playing} />
         </button>
       )}
 
-      {showPill && (
+      {pillPresence.item && (
         <button
-          className="nc-pill"
+          className={`nc-pill ${pillPresence.closing ? "closing" : ""}`}
           style={{ left: pillLeft, width: pw }}
           onClick={handleOpen}
           title="Focus timer"
