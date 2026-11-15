@@ -128,7 +128,10 @@ const TaskMenu: React.FC<{
   onClose: () => void;
 }> = ({ anchor, groups, remind, remindExtra, onClose }) => {
   const ref = useRef<HTMLDivElement | null>(null);
-  const [pos, setPos] = useState({ left: anchor.right - 190, top: anchor.bottom + 4 });
+  const [pos, setPos] = useState({
+    left: anchor.right - 190,
+    top: anchor.bottom + 4,
+  });
   const [remindOpen, setRemindOpen] = useState(false);
 
   useLayoutEffect(() => {
@@ -141,7 +144,8 @@ const TaskMenu: React.FC<{
     let left = anchor.right - w;
     let top = anchor.bottom + 4;
     left = Math.max(hr.left + 8, Math.min(left, hr.right - w - 8));
-    if (top + h > hr.bottom - 8) top = Math.max(hr.top + 36, anchor.top - h - 4);
+    if (top + h > hr.bottom - 8)
+      top = Math.max(hr.top + 36, anchor.top - h - 4);
     setPos({ left, top });
   }, [anchor, remindOpen]);
 
@@ -209,9 +213,15 @@ const TaskMenu: React.FC<{
                       <span>{r.label}</span>
                     </button>
                   ))}
-                  {remindExtra && remindExtra.length > 0 && <div className="nc-menu-sep" />}
+                  {remindExtra && remindExtra.length > 0 && (
+                    <div className="nc-menu-sep" />
+                  )}
                   {remindExtra?.map((r) => (
-                    <button key={r.label} className={r.danger ? "danger" : ""} onClick={fire(r.run)}>
+                    <button
+                      key={r.label}
+                      className={r.danger ? "danger" : ""}
+                      onClick={fire(r.run)}
+                    >
                       <span>{r.label}</span>
                     </button>
                   ))}
@@ -239,7 +249,9 @@ const TasksCard: React.FC<{ snapshot: AppSnapshot; grain: boolean }> = ({
   const [draft, setDraft] = useState("");
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameText, setRenameText] = useState("");
-  const [menu, setMenu] = useState<{ task: TaskItem; rect: DOMRect } | null>(null);
+  const [menu, setMenu] = useState<{ task: TaskItem; rect: DOMRect } | null>(
+    null,
+  );
   const [reminderTask, setReminderTask] = useState<TaskItem | null>(null);
   const [limitTask, setLimitTask] = useState<TaskItem | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
@@ -248,7 +260,7 @@ const TasksCard: React.FC<{ snapshot: AppSnapshot; grain: boolean }> = ({
   const dayTs =
     day === "today"
       ? snapshot.todayStartSecs
-      : snapshot.weekDays[1]?.day ?? snapshot.todayStartSecs + 86400;
+      : (snapshot.weekDays[1]?.day ?? snapshot.todayStartSecs + 86400);
   const tasks = day === "today" ? snapshot.todayTasks : snapshot.tomorrowTasks;
   const doneCount = tasks.filter((t) => t.isDone).length;
 
@@ -336,16 +348,25 @@ const TasksCard: React.FC<{ snapshot: AppSnapshot; grain: boolean }> = ({
     [
       {
         label: day === "today" ? "Move to Tomorrow" : "Move to Today",
-        icon: day === "today" ? <ArrowRightCircle size={13} /> : <ArrowLeftCircle size={13} />,
+        icon:
+          day === "today" ? (
+            <ArrowRightCircle size={13} />
+          ) : (
+            <ArrowLeftCircle size={13} />
+          ),
         run: () =>
           api.moveTaskToDate(
             t.id,
             day === "today"
-              ? snapshot.weekDays[1]?.day ?? snapshot.todayStartSecs + 86400
+              ? (snapshot.weekDays[1]?.day ?? snapshot.todayStartSecs + 86400)
               : snapshot.todayStartSecs,
           ),
       },
-      { label: "Duplicate", icon: <Copy size={13} />, run: () => api.duplicateTask(t.id) },
+      {
+        label: "Duplicate",
+        icon: <Copy size={13} />,
+        run: () => api.duplicateTask(t.id),
+      },
     ],
     [
       {
@@ -370,14 +391,22 @@ const TasksCard: React.FC<{ snapshot: AppSnapshot; grain: boolean }> = ({
         ) : null}
         {t.remindAt ? (
           <span className="nc-badge" style={{ opacity: t.reminded ? 0.55 : 1 }}>
-            {t.reminded ? <BellOff size={9} strokeWidth={3} /> : <Bell size={9} strokeWidth={3} />}
+            {t.reminded ? (
+              <BellOff size={9} strokeWidth={3} />
+            ) : (
+              <Bell size={9} strokeWidth={3} />
+            )}
             {reminderLabel(t.remindAt)}
           </span>
         ) : null}
         {linked && (
           <span className="nc-badge active">
             <i className={`nc-dot ${timer.state}`} />
-            {timer.state === "running" ? "Active" : timer.state === "paused" ? "Paused" : "Time's up"}
+            {timer.state === "running"
+              ? "Active"
+              : timer.state === "paused"
+                ? "Paused"
+                : "Time's up"}
           </span>
         )}
       </div>
@@ -416,9 +445,17 @@ const TasksCard: React.FC<{ snapshot: AppSnapshot; grain: boolean }> = ({
 
           {tasks.length === 0 ? (
             <div className="nc-empty">
-              <img src={mascotUrl} alt="" width={44} height={44} style={{ opacity: 0.85 }} />
+              <img
+                src={mascotUrl}
+                alt=""
+                width={44}
+                height={44}
+                style={{ opacity: 0.85 }}
+              />
               <span>
-                {day === "today" ? "Nothing planned yet." : "Nothing queued for tomorrow."}
+                {day === "today"
+                  ? "Nothing planned yet."
+                  : "Nothing queued for tomorrow."}
               </span>
             </div>
           ) : (
@@ -440,7 +477,11 @@ const TasksCard: React.FC<{ snapshot: AppSnapshot; grain: boolean }> = ({
                   onDragOver={(e) => e.preventDefault()}
                   onDrop={() => drop(t.id)}
                 >
-                  <GripVertical size={12} strokeWidth={2.5} className="nc-grip" />
+                  <GripVertical
+                    size={12}
+                    strokeWidth={2.5}
+                    className="nc-grip"
+                  />
                   <button
                     className="nc-check"
                     onClick={() => api.toggleTask(t.id)}
@@ -449,7 +490,11 @@ const TasksCard: React.FC<{ snapshot: AppSnapshot; grain: boolean }> = ({
                     {t.isDone ? (
                       <CheckCircle2 size={18} strokeWidth={2.2} />
                     ) : (
-                      <Circle size={18} strokeWidth={1.8} style={{ opacity: 0.45 }} />
+                      <Circle
+                        size={18}
+                        strokeWidth={1.8}
+                        style={{ opacity: 0.45 }}
+                      />
                     )}
                   </button>
                   <div className="nc-task-text">
@@ -487,7 +532,9 @@ const TasksCard: React.FC<{ snapshot: AppSnapshot; grain: boolean }> = ({
                     onClick={(e) =>
                       setMenu({
                         task: t,
-                        rect: (e.currentTarget as HTMLElement).getBoundingClientRect(),
+                        rect: (
+                          e.currentTarget as HTMLElement
+                        ).getBoundingClientRect(),
                       })
                     }
                   >
@@ -500,7 +547,10 @@ const TasksCard: React.FC<{ snapshot: AppSnapshot; grain: boolean }> = ({
 
           <div className="nc-tasks-foot">
             {estimate && (
-              <span className="nc-foot-estimate" title="Estimated time to finish every unfinished task that has a time limit">
+              <span
+                className="nc-foot-estimate"
+                title="Estimated time to finish every unfinished task that has a time limit"
+              >
                 <Hourglass size={10.5} />
                 {estimate}
               </span>
@@ -554,7 +604,9 @@ const TasksCard: React.FC<{ snapshot: AppSnapshot; grain: boolean }> = ({
 
       {limitTask && (
         <FocusDurationModal
-          initialMinutes={limitTask.timeLimitMinutes ?? settings.defaultFocusMinutes}
+          initialMinutes={
+            limitTask.timeLimitMinutes ?? settings.defaultFocusMinutes
+          }
           allowsClear={limitTask.timeLimitMinutes !== null}
           onSave={(m) => api.setTaskTimeLimit(limitTask.id, m)}
           onClear={() => api.setTaskTimeLimit(limitTask.id, null)}
@@ -617,7 +669,9 @@ const TimerCard: React.FC<{ snapshot: AppSnapshot; grain: boolean }> = ({
                 />
                 <div className="nc-timer-status">{status}</div>
                 <div className="nc-progress">
-                  <div style={{ width: `${Math.max(1, timer.progress * 100)}%` }} />
+                  <div
+                    style={{ width: `${Math.max(1, timer.progress * 100)}%` }}
+                  />
                 </div>
               </>
             )}
@@ -626,17 +680,26 @@ const TimerCard: React.FC<{ snapshot: AppSnapshot; grain: boolean }> = ({
           <div className="nc-timer-controls">
             {timer.state === "finished" ? (
               <>
-                <button className="nc-btn-primary" onClick={() => api.timerAddTime(300)}>
+                <button
+                  className="nc-btn-primary"
+                  onClick={() => api.timerAddTime(300)}
+                >
                   + Add 5 min
                 </button>
-                <button className="nc-btn-secondary" onClick={() => api.timerReset()}>
+                <button
+                  className="nc-btn-secondary"
+                  onClick={() => api.timerReset()}
+                >
                   <Check size={12} strokeWidth={3} />
                   Done
                 </button>
               </>
             ) : (
               <>
-                <button className="nc-btn-primary" onClick={() => api.timerToggle()}>
+                <button
+                  className="nc-btn-primary"
+                  onClick={() => api.timerToggle()}
+                >
                   {timer.state === "running" ? (
                     <Pause size={12} fill="currentColor" />
                   ) : (
@@ -732,7 +795,10 @@ const NotepadCard: React.FC<{ snapshot: AppSnapshot; grain: boolean }> = ({
   return (
     <PaperCard bg="var(--sand)" grain={grain}>
       <div className="nc-notepad">
-        <CardTitle icon={<NotebookText size={12} strokeWidth={2.5} />} title="Notepad" />
+        <CardTitle
+          icon={<NotebookText size={12} strokeWidth={2.5} />}
+          title="Notepad"
+        />
         <textarea
           ref={areaRef}
           className="nc-note-area"
@@ -815,30 +881,47 @@ const EventsCard: React.FC<{ snapshot: AppSnapshot; grain: boolean }> = ({
     });
   }
   items.sort(
-    (a, b) =>
-      Number(!a.isAllDay) - Number(!b.isAllDay) || a.start - b.start,
+    (a, b) => Number(!a.isAllDay) - Number(!b.isAllDay) || a.start - b.start,
   );
 
   const authorized = calendar.access.kind === "authorized";
   const timeText = (i: EventItem) => {
     if (i.isAllDay) return "All day";
-    return i.end ? `${timeShort(i.start)} – ${timeShort(i.end)}` : timeShort(i.start);
+    return i.end
+      ? `${timeShort(i.start)} – ${timeShort(i.end)}`
+      : timeShort(i.start);
   };
 
   return (
     <>
       <PaperCard bg="var(--slate)" grain={grain}>
         <div className="nc-events">
-          <CardTitle icon={<Calendar size={12} strokeWidth={2.5} />} title="Today" opacity={0.85} />
+          <CardTitle
+            icon={<Calendar size={12} strokeWidth={2.5} />}
+            title="Today"
+            opacity={0.85}
+          />
 
           {items.length === 0 ? (
             <div className="nc-empty light">
               {authorized ? (
-                <CalendarCheck size={26} strokeWidth={1.4} style={{ opacity: 0.45 }} />
+                <CalendarCheck
+                  size={26}
+                  strokeWidth={1.4}
+                  style={{ opacity: 0.45 }}
+                />
               ) : (
-                <Calendar size={26} strokeWidth={1.4} style={{ opacity: 0.45 }} />
+                <Calendar
+                  size={26}
+                  strokeWidth={1.4}
+                  style={{ opacity: 0.45 }}
+                />
               )}
-              <span>{authorized ? "Nothing scheduled today." : "No reminders today."}</span>
+              <span>
+                {authorized
+                  ? "Nothing scheduled today."
+                  : "No reminders today."}
+              </span>
             </div>
           ) : (
             <div className="nc-scroll-list events">
@@ -870,7 +953,9 @@ const EventsCard: React.FC<{ snapshot: AppSnapshot; grain: boolean }> = ({
                         {i.isReminder && <Bell size={9} fill="currentColor" />}
                         {timeText(i)}
                       </div>
-                      {happeningNow && <span className="nc-now-badge">Happening now</span>}
+                      {happeningNow && (
+                        <span className="nc-now-badge">Happening now</span>
+                      )}
                     </div>
                   </div>
                 );
@@ -880,14 +965,22 @@ const EventsCard: React.FC<{ snapshot: AppSnapshot; grain: boolean }> = ({
 
           <div style={{ flex: 1 }} />
           {calendar.access.kind === "failed" && (
-            <div className="nc-footnote">Feed error: {calendar.access.message}</div>
+            <div className="nc-footnote">
+              Feed error: {calendar.access.message}
+            </div>
           )}
           {calendar.access.kind === "notDetermined" ? (
-            <button className="nc-btn-ink-wide" onClick={() => setIcsOpen(true)}>
+            <button
+              className="nc-btn-ink-wide"
+              onClick={() => setIcsOpen(true)}
+            >
               Connect Calendar
             </button>
           ) : (
-            <button className="nc-linklike foot" onClick={() => setIcsOpen(true)}>
+            <button
+              className="nc-linklike foot"
+              onClick={() => setIcsOpen(true)}
+            >
               Calendar feed
             </button>
           )}
@@ -897,7 +990,9 @@ const EventsCard: React.FC<{ snapshot: AppSnapshot; grain: boolean }> = ({
       {icsOpen && (
         <IcsUrlModal
           initialUrl={settings.icsUrl ?? ""}
-          onSave={(url) => api.settingsUpdate({ ...settings, icsUrl: url || null })}
+          onSave={(url) =>
+            api.settingsUpdate({ ...settings, icsUrl: url || null })
+          }
           onClose={() => setIcsOpen(false)}
         />
       )}
@@ -932,7 +1027,8 @@ const MusicCard: React.FC<{ snapshot: AppSnapshot; grain: boolean }> = ({
 
   let position = 0;
   if (track) {
-    position = track.elapsed + (track.playing ? (now - track.updatedAtMs) / 1000 : 0);
+    position =
+      track.elapsed + (track.playing ? (now - track.updatedAtMs) / 1000 : 0);
     if (track.duration > 0) position = Math.min(position, track.duration);
   }
   const fraction = track && track.duration > 0 ? position / track.duration : 0;
@@ -971,14 +1067,20 @@ const MusicCard: React.FC<{ snapshot: AppSnapshot; grain: boolean }> = ({
               </div>
             </div>
             <div className="nc-music-progress">
-              <span style={{ width: 34, textAlign: "right" }}>{mmss(position)}</span>
+              <span style={{ width: 34, textAlign: "right" }}>
+                {mmss(position)}
+              </span>
               <div className="nc-music-bar">
                 <div style={{ width: `${Math.max(1, fraction * 100)}%` }} />
               </div>
               <span style={{ width: 34 }}>{mmss(track.duration)}</span>
             </div>
             <div className="nc-music-controls">
-              <button className="nc-transport" onClick={() => api.musicPrevious()} title="Previous">
+              <button
+                className="nc-transport"
+                onClick={() => api.musicPrevious()}
+                title="Previous"
+              >
                 <SkipBack size={14} fill="currentColor" />
               </button>
               <button
@@ -989,10 +1091,18 @@ const MusicCard: React.FC<{ snapshot: AppSnapshot; grain: boolean }> = ({
                 {track.playing ? (
                   <Pause size={16} fill="currentColor" />
                 ) : (
-                  <Play size={16} fill="currentColor" style={{ marginLeft: 2 }} />
+                  <Play
+                    size={16}
+                    fill="currentColor"
+                    style={{ marginLeft: 2 }}
+                  />
                 )}
               </button>
-              <button className="nc-transport" onClick={() => api.musicNext()} title="Next">
+              <button
+                className="nc-transport"
+                onClick={() => api.musicNext()}
+                title="Next"
+              >
                 <SkipForward size={14} fill="currentColor" />
               </button>
             </div>
@@ -1000,8 +1110,13 @@ const MusicCard: React.FC<{ snapshot: AppSnapshot; grain: boolean }> = ({
         ) : (
           <div className="nc-empty light" style={{ gap: 10 }}>
             <Music4 size={26} strokeWidth={1.4} style={{ opacity: 0.4 }} />
-            <span style={{ fontWeight: 600, opacity: 0.65 }}>Nothing playing</span>
-            <button className="nc-btn-ink-wide" onClick={() => api.musicLaunchPlayer()}>
+            <span style={{ fontWeight: 600, opacity: 0.65 }}>
+              Nothing playing
+            </span>
+            <button
+              className="nc-btn-ink-wide"
+              onClick={() => api.musicLaunchPlayer()}
+            >
               Open Spotify
             </button>
           </div>

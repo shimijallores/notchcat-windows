@@ -278,7 +278,7 @@ fn run_selftest_update() -> i32 {
         let tmp = std::env::temp_dir().join(format!("notchcat-update-{}.json", Uuid::new_v4()));
         let json = r#"{
             "tag_name": "v9.9.9",
-            "html_url": "https://github.com/PranavSathy/notchcat-windows/releases/v9.9.9",
+            "html_url": "https://github.com/shimijallores/notchcat-windows/releases/v9.9.9",
             "assets": [
                 {"name": "NotchCat_9.9.9_x64-setup.exe", "browser_download_url": "https://example.com/NotchCat_9.9.9_x64-setup.exe"}
             ]

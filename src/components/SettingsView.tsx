@@ -51,7 +51,10 @@ type AuthFlow =
 const CARD_META: Record<CardID, { title: string; icon: React.ReactNode }> = {
   tasks: { title: "Tasks", icon: <CheckCircle2 size={12} strokeWidth={2.2} /> },
   timer: { title: "Focus timer", icon: <Timer size={12} strokeWidth={2.2} /> },
-  notepad: { title: "Notepad", icon: <NotebookText size={12} strokeWidth={2.2} /> },
+  notepad: {
+    title: "Notepad",
+    icon: <NotebookText size={12} strokeWidth={2.2} />,
+  },
   events: { title: "Events", icon: <Calendar size={12} strokeWidth={2.2} /> },
   music: { title: "Now playing", icon: <Music2 size={12} strokeWidth={2.2} /> },
 };
@@ -154,7 +157,10 @@ function relativeSyncTime(ms: number): string {
   if (diffSec < 45) return "just now";
   const mins = Math.round(diffSec / 60);
   if (mins < 60) return `${mins}m ago`;
-  return new Date(ms).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  return new Date(ms).toLocaleTimeString([], {
+    hour: "numeric",
+    minute: "2-digit",
+  });
 }
 
 const CloudSyncPanel: React.FC<{
@@ -357,7 +363,10 @@ const AuthTakeover: React.FC<{
 
   if (flow.kind === "welcome") {
     return (
-      <section className="nc-paper-card nc-auth-takeover" style={{ background: tint }}>
+      <section
+        className="nc-paper-card nc-auth-takeover"
+        style={{ background: tint }}
+      >
         {grain && <div className="nc-paper-grain" aria-hidden="true" />}
         <div className="nc-card-body">
           <WelcomeScreen
@@ -383,8 +392,7 @@ const AuthTakeover: React.FC<{
       ? "Cloud sync is invite only. Enter the access key you were given."
       : "Choose a username and a password for your account.";
 
-  const sentence = (msg: string) =>
-    /[.?!]$/.test(msg) ? msg : `${msg}.`;
+  const sentence = (msg: string) => (/[.?!]$/.test(msg) ? msg : `${msg}.`);
 
   const verifyKey = async () => {
     if (working || !accessKey.trim()) return;
@@ -408,10 +416,20 @@ const AuthTakeover: React.FC<{
       if (isSignIn) {
         if (!username.trim() || !password) return;
         await api.syncSignIn(serverUrl, username.trim(), password);
-        onFlowChange({ kind: "welcome", name: username.trim(), created: false });
+        onFlowChange({
+          kind: "welcome",
+          name: username.trim(),
+          created: false,
+        });
       } else {
-        if (step !== "details" || !username.trim() || password.length < 8) return;
-        await api.syncSignUp(serverUrl, accessKey.trim(), username.trim(), password);
+        if (step !== "details" || !username.trim() || password.length < 8)
+          return;
+        await api.syncSignUp(
+          serverUrl,
+          accessKey.trim(),
+          username.trim(),
+          password,
+        );
         onFlowChange({ kind: "welcome", name: username.trim(), created: true });
       }
     } catch (e) {
@@ -422,7 +440,10 @@ const AuthTakeover: React.FC<{
   };
 
   return (
-    <section className="nc-paper-card nc-auth-takeover" style={{ background: tint }}>
+    <section
+      className="nc-paper-card nc-auth-takeover"
+      style={{ background: tint }}
+    >
       {grain && <div className="nc-paper-grain" aria-hidden="true" />}
       <div className="nc-card-body">
         <button className="nc-back-pill" onClick={() => onFlowChange(null)}>
@@ -465,7 +486,9 @@ const AuthTakeover: React.FC<{
                       type="button"
                       className="nc-eye-btn"
                       onClick={() => setShowPassword((v) => !v)}
-                      aria-label={showPassword ? "Hide password" : "Show password"}
+                      aria-label={
+                        showPassword ? "Hide password" : "Show password"
+                      }
                     >
                       {showPassword ? <EyeOff size={13} /> : <Eye size={13} />}
                     </button>
@@ -595,7 +618,9 @@ const AuthTakeover: React.FC<{
                       type="button"
                       className="nc-eye-btn"
                       onClick={() => setShowPassword((v) => !v)}
-                      aria-label={showPassword ? "Hide password" : "Show password"}
+                      aria-label={
+                        showPassword ? "Hide password" : "Show password"
+                      }
                     >
                       {showPassword ? <EyeOff size={13} /> : <Eye size={13} />}
                     </button>
@@ -613,7 +638,9 @@ const AuthTakeover: React.FC<{
                 </div>
                 <button
                   className="nc-auth-submit"
-                  disabled={(!username.trim() || password.length < 8) && !working}
+                  disabled={
+                    (!username.trim() || password.length < 8) && !working
+                  }
                   onClick={submit}
                 >
                   {working ? "Creating…" : "Create account"}

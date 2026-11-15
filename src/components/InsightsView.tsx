@@ -40,7 +40,10 @@ const HistoryRestoreMenu: React.FC<{
   onClose: () => void;
 }> = ({ anchor, onRestore, onClose }) => {
   const ref = useRef<HTMLDivElement | null>(null);
-  const [pos, setPos] = useState({ left: anchor.right - 150, top: anchor.bottom + 4 });
+  const [pos, setPos] = useState({
+    left: anchor.right - 150,
+    top: anchor.bottom + 4,
+  });
 
   useLayoutEffect(() => {
     const el = ref.current;
@@ -49,9 +52,13 @@ const HistoryRestoreMenu: React.FC<{
     const hr = host.getBoundingClientRect();
     const w = el.offsetWidth;
     const h = el.offsetHeight;
-    let left = Math.max(hr.left + 8, Math.min(anchor.right - w, hr.right - w - 8));
+    let left = Math.max(
+      hr.left + 8,
+      Math.min(anchor.right - w, hr.right - w - 8),
+    );
     let top = anchor.bottom + 4;
-    if (top + h > hr.bottom - 8) top = Math.max(hr.top + 36, anchor.top - h - 4);
+    if (top + h > hr.bottom - 8)
+      top = Math.max(hr.top + 36, anchor.top - h - 4);
     setPos({ left, top });
   }, [anchor]);
 
@@ -103,9 +110,10 @@ export const InsightsView: React.FC<{ snapshot: AppSnapshot }> = ({
   const [search, setSearch] = useState("");
   const [pageSize, setPageSize] = useState(60);
   const [history, setHistory] = useState<HistoryPage | null>(null);
-  const [menuTarget, setMenuTarget] = useState<{ id: string; rect: DOMRect } | null>(
-    null,
-  );
+  const [menuTarget, setMenuTarget] = useState<{
+    id: string;
+    rect: DOMRect;
+  } | null>(null);
 
   const { insights, ui, settings } = snapshot;
   const grain = settings.paperGrain;
@@ -119,7 +127,14 @@ export const InsightsView: React.FC<{ snapshot: AppSnapshot }> = ({
     if (metric === "history") {
       fetchHistory(search, pageSize);
     }
-  }, [metric, search, pageSize, snapshot.todayTasks, snapshot.tomorrowTasks, insights.completed]);
+  }, [
+    metric,
+    search,
+    pageSize,
+    snapshot.todayTasks,
+    snapshot.tomorrowTasks,
+    insights.completed,
+  ]);
 
   const values = (d: InsightsDay): { dark: number; total: number } => {
     if (metric === "tasks") {
@@ -141,7 +156,7 @@ export const InsightsView: React.FC<{ snapshot: AppSnapshot }> = ({
 
   const selectedDay =
     selectedDate !== null
-      ? insights.days.find((d) => d.date === selectedDate) ?? null
+      ? (insights.days.find((d) => d.date === selectedDate) ?? null)
       : null;
 
   const detailText = (() => {
@@ -159,7 +174,10 @@ export const InsightsView: React.FC<{ snapshot: AppSnapshot }> = ({
   return (
     <div className="nc-insights-row">
       {/* Left summary card */}
-      <section className="nc-paper-card nc-insights-summary" style={{ background: "var(--mint)" }}>
+      <section
+        className="nc-paper-card nc-insights-summary"
+        style={{ background: "var(--mint)" }}
+      >
         {grain && <div className="nc-paper-grain" aria-hidden="true" />}
         <div className="nc-insights-summary-inner">
           <div className="nc-card-title-row" style={{ opacity: 0.75 }}>
@@ -196,7 +214,10 @@ export const InsightsView: React.FC<{ snapshot: AppSnapshot }> = ({
       </section>
 
       {/* Right chart / history card */}
-      <section className="nc-paper-card nc-insights-right" style={{ background: "var(--lavender)" }}>
+      <section
+        className="nc-paper-card nc-insights-right"
+        style={{ background: "var(--lavender)" }}
+      >
         {grain && <div className="nc-paper-grain" aria-hidden="true" />}
         <div className="nc-insights-right-inner">
           <div className="nc-insights-toolbar">
@@ -207,7 +228,11 @@ export const InsightsView: React.FC<{ snapshot: AppSnapshot }> = ({
                   className={metric === m ? "active" : ""}
                   onClick={() => setMetric(m)}
                 >
-                  {m === "tasks" ? "Tasks" : m === "focus" ? "Focus" : "History"}
+                  {m === "tasks"
+                    ? "Tasks"
+                    : m === "focus"
+                      ? "Focus"
+                      : "History"}
                 </button>
               ))}
             </div>
@@ -216,7 +241,11 @@ export const InsightsView: React.FC<{ snapshot: AppSnapshot }> = ({
 
             {metric === "history" ? (
               <div className="nc-hist-search">
-                <Search size={11} strokeWidth={2.5} style={{ opacity: 0.5, flexShrink: 0 }} />
+                <Search
+                  size={11}
+                  strokeWidth={2.5}
+                  style={{ opacity: 0.5, flexShrink: 0 }}
+                />
                 <input
                   value={search}
                   placeholder="Search finished tasks"
@@ -250,7 +279,9 @@ export const InsightsView: React.FC<{ snapshot: AppSnapshot }> = ({
                 >
                   <ChevronLeft size={11} strokeWidth={3} />
                 </button>
-                <span className="nc-week-range">{formatRange(insights.days)}</span>
+                <span className="nc-week-range">
+                  {formatRange(insights.days)}
+                </span>
                 <button
                   className="nc-week-btn"
                   disabled={ui.insightsWeekOffset >= 0}
@@ -290,7 +321,9 @@ export const InsightsView: React.FC<{ snapshot: AppSnapshot }> = ({
                           <b>{sec.title}</b>
                           <span>{sec.items.length} done</span>
                           {sec.focusSeconds > 0 && (
-                            <span>· {formatDurationShort(sec.focusSeconds)} focused</span>
+                            <span>
+                              · {formatDurationShort(sec.focusSeconds)} focused
+                            </span>
                           )}
                         </div>
                         {sec.items.map((item) => {
@@ -307,14 +340,18 @@ export const InsightsView: React.FC<{ snapshot: AppSnapshot }> = ({
                                 strokeWidth={2.2}
                                 style={{ opacity: 0.8, flexShrink: 0 }}
                               />
-                              <span className="nc-hist-title">{item.title}</span>
+                              <span className="nc-hist-title">
+                                {item.title}
+                              </span>
                               {item.focusSeconds > 0 && (
                                 <span className="nc-badge">
                                   <Timer size={9} strokeWidth={3} />
                                   {formatDurationShort(item.focusSeconds)}
                                 </span>
                               )}
-                              <span className="nc-hist-time">{completedStr}</span>
+                              <span className="nc-hist-time">
+                                {completedStr}
+                              </span>
                               <button
                                 className="nc-hist-more"
                                 aria-label="Task actions"
@@ -344,7 +381,8 @@ export const InsightsView: React.FC<{ snapshot: AppSnapshot }> = ({
                     )}
                   </div>
                   <div className="nc-history-foot">
-                    {history.total} finished {history.total === 1 ? "task" : "tasks"}
+                    {history.total} finished{" "}
+                    {history.total === 1 ? "task" : "tasks"}
                   </div>
                 </>
               )}
@@ -377,7 +415,10 @@ export const InsightsView: React.FC<{ snapshot: AppSnapshot }> = ({
                       {insights.days.map((d) => {
                         const v = values(d);
                         const darkPct = Math.min(100, (v.dark / axisMax) * 100);
-                        const totalPct = Math.min(100, (v.total / axisMax) * 100);
+                        const totalPct = Math.min(
+                          100,
+                          (v.total / axisMax) * 100,
+                        );
                         const extraPct = Math.max(0, totalPct - darkPct);
                         const isSel = selectedDate === d.date;
                         return (
@@ -385,7 +426,9 @@ export const InsightsView: React.FC<{ snapshot: AppSnapshot }> = ({
                             key={d.date}
                             className="nc-col-btn"
                             onClick={() =>
-                              setSelectedDate((cur) => (cur === d.date ? null : d.date))
+                              setSelectedDate((cur) =>
+                                cur === d.date ? null : d.date,
+                              )
                             }
                           >
                             <span className="nc-bar-stack">
@@ -411,7 +454,9 @@ export const InsightsView: React.FC<{ snapshot: AppSnapshot }> = ({
                   <div className="nc-x-labels">
                     {insights.days.map((d) => {
                       const dt = new Date(d.date * 1000);
-                      const wk = dt.toLocaleDateString([], { weekday: "short" });
+                      const wk = dt.toLocaleDateString([], {
+                        weekday: "short",
+                      });
                       const dayNum = dt.getDate();
                       const isToday = d.date === todaySec;
                       const isSel = selectedDate === d.date;
@@ -420,7 +465,9 @@ export const InsightsView: React.FC<{ snapshot: AppSnapshot }> = ({
                           key={d.date}
                           className={`nc-x-label ${isSel || isToday ? "strong" : ""}`}
                           onClick={() =>
-                            setSelectedDate((cur) => (cur === d.date ? null : d.date))
+                            setSelectedDate((cur) =>
+                              cur === d.date ? null : d.date,
+                            )
                           }
                         >
                           <span>{wk}</span>

@@ -1133,7 +1133,7 @@ pub async fn fetch_latest_release() -> Result<Option<ReleaseInfo>, String> {
         .ok()
         .filter(|s| !s.trim().is_empty())
         .unwrap_or_else(|| {
-            "https://api.github.com/repos/PranavSathy/notchcat-windows/releases/latest".to_string()
+            "https://api.github.com/repos/shimijallores/notchcat-windows/releases/latest".to_string()
         });
 
     let bytes = if let Some(path_str) = url.strip_prefix("file://") {
