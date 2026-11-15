@@ -76,11 +76,7 @@ export const CollapsedIsland: React.FC<{ snapshot: AppSnapshot }> = ({
 
   const showPill = settings.showPill && timer.state !== "idle";
   const track = music.track;
-  const showChip =
-    (settings.showMusicChip ||
-      settings.cards.some((c) => c.card === "music" && c.enabled)) &&
-    track !== null &&
-    track.playing;
+  const showChip = settings.showMusicChip && track !== null && track.playing;
 
   const handleOpen = () => {
     if (settings.clickToOpen || style === "island") api.openTray(true);

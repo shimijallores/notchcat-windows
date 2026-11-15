@@ -236,7 +236,7 @@ pub fn spawn_cursor_poller(app: AppHandle, runtime: Arc<AppRuntime>) {
                 let snap = core.timer.snapshot();
                 let show_pill = core.settings.data.show_pill
                     && (core.timer.is_active() || snap.state == crate::timer::TimerState::Finished);
-                let show_chip = (core.settings.music_wanted() || m.fake_mode)
+                let show_chip = core.settings.data.show_music_chip
                     && m.is_active()
                     && m.track.is_some();
                 (
