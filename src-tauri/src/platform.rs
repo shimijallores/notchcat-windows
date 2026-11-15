@@ -252,6 +252,8 @@ pub struct MusicService {
     art_cache_key: Option<String>,
     art_cache_url: Option<String>,
     art_cache_tint: Option<[u8; 3]>,
+    art_miss_count: u8,
+    art_fallback_attempted_key: Option<String>,
 }
 
 impl MusicService {
@@ -265,6 +267,8 @@ impl MusicService {
             art_cache_key: None,
             art_cache_url: None,
             art_cache_tint: None,
+            art_miss_count: 0,
+            art_fallback_attempted_key: None,
         }
     }
 
@@ -441,15 +445,22 @@ impl MusicService {
 
         let key = format!("{}:{}:{}", item.player.display_name(), item.title, item.artist);
         if self.art_cache_key.as_deref() != Some(&key) {
+            self.art_cache_key = Some(key.clone());
+            self.art_cache_url = None;
+            self.art_cache_tint = None;
+            self.art_miss_count = 0;
+        }
+        if self.art_cache_url.is_none() {
             if let Some(bytes) = item.artwork_bytes.as_deref() {
                 let (url, tint) = process_artwork_bytes(bytes);
-                self.art_cache_key = Some(key.clone());
-                self.art_cache_url = url;
-                self.art_cache_tint = tint;
+                if url.is_some() {
+                    self.art_cache_url = url;
+                    self.art_cache_tint = tint;
+                } else {
+                    self.art_miss_count = self.art_miss_count.saturating_add(1);
+                }
             } else {
-                self.art_cache_key = Some(key.clone());
-                self.art_cache_url = None;
-                self.art_cache_tint = None;
+                self.art_miss_count = self.art_miss_count.saturating_add(1);
             }
         }
 
@@ -553,7 +564,6 @@ pub fn poll_windows_smtc(last_art_key: Option<&str>) -> SmtcPollResult {
         GlobalSystemMediaTransportControlsSessionManager,
         GlobalSystemMediaTransportControlsSessionPlaybackStatus,
     };
-    use windows::Storage::Streams::{Buffer, InputStreamOptions};
 
     let Ok(op) = GlobalSystemMediaTransportControlsSessionManager::RequestAsync() else {
         return SmtcPollResult {
@@ -635,27 +645,7 @@ pub fn poll_windows_smtc(last_art_key: Option<&str>) -> SmtcPollResult {
 
     let new_key = format!("{}:{}:{}", player.display_name(), title, artist);
     let artwork_bytes = if last_art_key != Some(new_key.as_str()) {
-        props
-            .Thumbnail()
-            .ok()
-            .and_then(|thumb_ref| thumb_ref.OpenReadAsync().ok()?.get().ok())
-            .and_then(|stream| {
-                let size = stream.Size().ok()? as u32;
-                if size == 0 || size > 8 * 1024 * 1024 {
-                    return None;
-                }
-                let buf = Buffer::Create(size).ok()?;
-                let _ = stream
-                    .ReadAsync(&buf, size, InputStreamOptions::None)
-                    .ok()?
-                    .get()
-                    .ok()?;
-                let len = buf.Length().ok()? as usize;
-                let data = windows::Storage::Streams::DataReader::FromBuffer(&buf).ok()?;
-                let mut out = vec![0u8; len];
-                data.ReadBytes(&mut out).ok()?;
-                Some(out)
-            })
+        read_smtc_thumbnail_bytes(&props)
     } else {
         None
     };
@@ -672,6 +662,112 @@ pub fn poll_windows_smtc(last_art_key: Option<&str>) -> SmtcPollResult {
             player,
             artwork_bytes,
         }),
+    }
+}
+
+fn read_smtc_thumbnail_bytes(
+    props: &windows::Media::Control::GlobalSystemMediaTransportControlsSessionMediaProperties,
+) -> Option<Vec<u8>> {
+    use windows::core::Interface;
+    use windows::Storage::Streams::{Buffer, DataReader, IInputStream, InputStreamOptions};
+
+    let thumb_ref = props.Thumbnail().ok()?;
+    let stream = thumb_ref.OpenReadAsync().ok()?.get().ok()?;
+    let raw_size = stream.Size().ok()?;
+    if raw_size == 0 || raw_size > 8 * 1024 * 1024 {
+        return None;
+    }
+    let size = raw_size as u32;
+
+    if let Ok(input) = Interface::cast::<IInputStream>(&stream) {
+        if let Ok(reader) = DataReader::CreateDataReader(&input) {
+            if let Some(loaded) = reader
+                .LoadAsync(size)
+                .ok()
+                .and_then(|op| op.get().ok())
+                .filter(|&n| n > 0)
+            {
+                let mut out = vec![0u8; loaded as usize];
+                if reader.ReadBytes(&mut out).is_ok() {
+                    let _ = reader.DetachStream();
+                    return Some(out);
+                }
+            }
+            let _ = reader.DetachStream();
+        }
+    }
+
+    let _ = stream.Seek(0);
+    let buf = Buffer::Create(size).ok()?;
+    let read_buf = stream
+        .ReadAsync(&buf, size, InputStreamOptions::None)
+        .ok()?
+        .get()
+        .ok()?;
+    let len = read_buf.Length().ok()? as usize;
+    if len == 0 {
+        return None;
+    }
+    let data = DataReader::FromBuffer(&read_buf).ok()?;
+    let mut out = vec![0u8; len];
+    data.ReadBytes(&mut out).ok()?;
+    Some(out)
+}
+
+fn fetch_itunes_artwork_bytes(title: &str, artist: &str) -> Option<Vec<u8>> {
+    let title = title.trim();
+    if title.is_empty() {
+        return None;
+    }
+    let term = if artist.trim().is_empty() {
+        title.to_string()
+    } else {
+        format!("{} {}", artist.trim(), title)
+    };
+
+    let fetch = async move {
+        let client = reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(3))
+            .user_agent("NotchCat-Windows")
+            .build()
+            .ok()?;
+        let resp = client
+            .get("https://itunes.apple.com/search")
+            .query(&[
+                ("media", "music"),
+                ("entity", "song"),
+                ("limit", "1"),
+                ("term", term.as_str()),
+            ])
+            .send()
+            .await
+            .ok()?;
+        if !resp.status().is_success() {
+            return None;
+        }
+        let body: serde_json::Value = resp.json().await.ok()?;
+        let art_url = body
+            .get("results")?
+            .as_array()?
+            .first()?
+            .get("artworkUrl100")?
+            .as_str()?
+            .replace("100x100bb", "300x300bb");
+        let img_resp = client.get(&art_url).send().await.ok()?;
+        if !img_resp.status().is_success() {
+            return None;
+        }
+        let bytes = img_resp.bytes().await.ok()?;
+        if bytes.is_empty() || bytes.len() > 4 * 1024 * 1024 {
+            return None;
+        }
+        Some(bytes.to_vec())
+    };
+
+    if let Ok(handle) = tokio::runtime::Handle::try_current() {
+        handle.block_on(fetch)
+    } else {
+        tokio::runtime::Runtime::new().ok()?.block_on(fetch)
     }
 }
 
@@ -1097,11 +1193,48 @@ pub fn poll_music_now(platform: &PlatformState) {
         if m.fake_mode {
             return;
         }
-        m.art_cache_key.clone()
+        m.art_cache_key.clone().filter(|_| m.art_cache_url.is_some())
     };
     let poll = poll_windows_smtc(last_key.as_deref());
-    let mut m = platform.music.lock().unwrap();
-    m.update_from_smtc(poll, now_ms());
+    let fallback_query = {
+        let mut m = platform.music.lock().unwrap();
+        m.update_from_smtc(poll, now_ms());
+        if m.art_cache_url.is_none() && m.art_miss_count >= 2 {
+            let track_info = m
+                .track
+                .as_ref()
+                .map(|t| (t.title.clone(), t.artist.clone()));
+            if let (Some(key), Some((title, artist))) = (m.art_cache_key.clone(), track_info) {
+                if m.art_fallback_attempted_key.as_deref() != Some(key.as_str()) {
+                    m.art_fallback_attempted_key = Some(key.clone());
+                    Some((key, title, artist))
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    };
+
+    if let Some((key, title, artist)) = fallback_query {
+        if let Some(bytes) = fetch_itunes_artwork_bytes(&title, &artist) {
+            let (url, tint) = process_artwork_bytes(&bytes);
+            if url.is_some() {
+                let mut m = platform.music.lock().unwrap();
+                if m.art_cache_key.as_deref() == Some(key.as_str()) && m.art_cache_url.is_none() {
+                    m.art_cache_url = url.clone();
+                    m.art_cache_tint = tint;
+                    if let Some(t) = m.track.as_mut() {
+                        t.artwork_data_url = url;
+                        t.pastel_tint = tint;
+                    }
+                }
+            }
+        }
+    }
 }
 
 #[cfg(test)]
@@ -1175,5 +1308,30 @@ mod tests {
         assert!(events[0].is_all_day);
         assert_eq!(events[0].title, "All Day Cat");
         assert_eq!(events[1].title, "Standup, Team");
+    }
+
+    #[test]
+    fn smtc_poll_reads_artwork_when_session_active() {
+        let poll = poll_windows_smtc(None);
+        if let Some(track) = poll.track {
+            println!(
+                "SMTC session active: player={:?}, title='{}', artist='{}', artwork_bytes={:?}",
+                track.player,
+                track.title,
+                track.artist,
+                track.artwork_bytes.as_ref().map(|b| b.len())
+            );
+            if track.player == MusicPlayer::Spotify {
+                let bytes = track
+                    .artwork_bytes
+                    .expect("expected live Spotify SMTC session to yield artwork bytes");
+                let (url, tint) = process_artwork_bytes(&bytes);
+                assert!(
+                    url.as_deref().map(|u| u.starts_with("data:image/png;base64,")).unwrap_or(false),
+                    "expected decoded PNG data URL from Spotify artwork bytes"
+                );
+                assert!(tint.is_some(), "expected pastel tint from Spotify artwork");
+            }
+        }
     }
 }
