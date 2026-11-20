@@ -1,6 +1,6 @@
 [package]
 name = "notchcat-windows"
-version = "1.0.6"
+version = "1.0.7"
 description = "Tasks and a focus timer that live in a floating island at the top of your screen."
 authors = ["NotchCat"]
 edition = "2021"

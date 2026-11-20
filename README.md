@@ -23,7 +23,7 @@ It is written in Rust, Tauri 2, React and TypeScript. Everything is stored local
 
 ## Install
 
-1. Download `NotchCat_1.0.6_x64-setup.exe` from the [latest release](https://github.com/shimijallores/notchcat-windows/releases/latest) (or [build it yourself](#build)).
+1. Download `NotchCat_1.0.7_x64-setup.exe` from the [latest release](https://github.com/shimijallores/notchcat-windows/releases/latest) (or [build it yourself](#build)).
 2. Run the setup installer.
 3. Because the build isn't code-signed, Windows SmartScreen may show a warning on first launch. Click **More info** → **Run anyway**.
 
@@ -42,7 +42,7 @@ npm run tauri dev     # run in development mode
 npm run tauri build   # build release binary & NSIS setup installer
 ```
 
-`npm run tauri build` compiles the Rust backend and React frontend and produces the standalone executable at `src-tauri/target/release/notchcat-windows.exe` along with the NSIS installer at `src-tauri/target/release/bundle/nsis/NotchCat_1.0.6_x64-setup.exe`.
+`npm run tauri build` compiles the Rust backend and React frontend and produces the standalone executable at `src-tauri/target/release/notchcat-windows.exe` along with the NSIS installer at `src-tauri/target/release/bundle/nsis/NotchCat_1.0.7_x64-setup.exe`.
 
 ## Using it
 
