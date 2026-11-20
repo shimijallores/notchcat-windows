@@ -124,45 +124,119 @@ fn build_chime_wav(freqs: &[f64]) -> Vec<u8> {
 // ---------------------------------------------------------------------------
 
 const RUN_KEY: &str = r"HKCU\Software\Microsoft\Windows\CurrentVersion\Run";
+const STARTUP_APPROVED_KEY: &str =
+    r"HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run";
 const RUN_VALUE: &str = "NotchCat";
+const STARTUP_ENABLED_HEX: &str = "020000000000000000000000";
+const STARTUP_DISABLED_HEX: &str = "030000000000000000000000";
 
-pub fn is_launch_at_login() -> bool {
+fn reg_command(args: &[&str]) -> std::io::Result<std::process::Output> {
     let mut cmd = Command::new("reg");
-    cmd.args(["query", RUN_KEY, "/v", RUN_VALUE]);
+    cmd.args(args);
     #[cfg(windows)]
     cmd.creation_flags(CREATE_NO_WINDOW);
-    cmd.output().map(|o| o.status.success()).unwrap_or(false)
+    cmd.output()
+}
+
+fn parse_startup_approved_enabled(reg_output: &str) -> Option<bool> {
+    for line in reg_output.lines() {
+        let trimmed = line.trim();
+        if let Some(pos) = trimmed.find("REG_BINARY") {
+            let hex = trimmed[pos + "REG_BINARY".len()..].trim();
+            if hex.len() >= 2 {
+                if let Ok(first_byte) = u8::from_str_radix(&hex[..2], 16) {
+                    // Windows StartupApproved uses an even leading byte (0x02/0x06) for enabled
+                    // and an odd leading byte (0x03/0x07) for disabled.
+                    return Some(first_byte % 2 == 0);
+                }
+            }
+        }
+    }
+    None
+}
+
+fn write_run_entry() -> Result<(), String> {
+    let exe = std::env::current_exe().map_err(|e| e.to_string())?;
+    let quoted = format!("\"{}\"", exe.display());
+    let out = reg_command(&[
+        "add",
+        RUN_KEY,
+        "/v",
+        RUN_VALUE,
+        "/t",
+        "REG_SZ",
+        "/d",
+        &quoted,
+        "/f",
+    ])
+    .map_err(|e| e.to_string())?;
+    if !out.status.success() {
+        return Err(String::from_utf8_lossy(&out.stderr).to_string());
+    }
+    Ok(())
+}
+
+fn write_startup_approved(enabled: bool) -> Result<(), String> {
+    let hex = if enabled {
+        STARTUP_ENABLED_HEX
+    } else {
+        STARTUP_DISABLED_HEX
+    };
+    let out = reg_command(&[
+        "add",
+        STARTUP_APPROVED_KEY,
+        "/v",
+        RUN_VALUE,
+        "/t",
+        "REG_BINARY",
+        "/d",
+        hex,
+        "/f",
+    ])
+    .map_err(|e| e.to_string())?;
+    if !out.status.success() {
+        return Err(String::from_utf8_lossy(&out.stderr).to_string());
+    }
+    Ok(())
+}
+
+/// Ensures NotchCat is registered under HKCU\...\Run so it appears in Windows Settings → Apps →
+/// Startup and Task Manager → Startup apps, preserving the user's enabled/disabled toggle if
+/// already present and defaulting to disabled on first registration.
+pub fn ensure_startup_registered() {
+    let has_run = reg_command(&["query", RUN_KEY, "/v", RUN_VALUE])
+        .map(|o| o.status.success())
+        .unwrap_or(false);
+    let _ = write_run_entry();
+    if !has_run {
+        let has_approved = reg_command(&["query", STARTUP_APPROVED_KEY, "/v", RUN_VALUE])
+            .map(|o| o.status.success())
+            .unwrap_or(false);
+        if !has_approved {
+            let _ = write_startup_approved(false);
+        }
+    }
+}
+
+pub fn is_launch_at_login() -> bool {
+    let has_run = reg_command(&["query", RUN_KEY, "/v", RUN_VALUE])
+        .map(|o| o.status.success())
+        .unwrap_or(false);
+    if !has_run {
+        return false;
+    }
+    match reg_command(&["query", STARTUP_APPROVED_KEY, "/v", RUN_VALUE]) {
+        Ok(out) if out.status.success() => {
+            let stdout = String::from_utf8_lossy(&out.stdout);
+            parse_startup_approved_enabled(&stdout).unwrap_or(true)
+        }
+        _ => true,
+    }
 }
 
 pub fn set_launch_at_login(enabled: bool) -> Result<(), String> {
-    if enabled {
-        let exe = std::env::current_exe().map_err(|e| e.to_string())?;
-        let quoted = format!("\"{}\"", exe.display());
-        let mut cmd = Command::new("reg");
-        cmd.args([
-            "add",
-            RUN_KEY,
-            "/v",
-            RUN_VALUE,
-            "/t",
-            "REG_SZ",
-            "/d",
-            &quoted,
-            "/f",
-        ]);
-        #[cfg(windows)]
-        cmd.creation_flags(CREATE_NO_WINDOW);
-        let out = cmd.output().map_err(|e| e.to_string())?;
-        if !out.status.success() {
-            return Err(String::from_utf8_lossy(&out.stderr).to_string());
-        }
-    } else {
-        let mut cmd = Command::new("reg");
-        cmd.args(["delete", RUN_KEY, "/v", RUN_VALUE, "/f"]);
-        #[cfg(windows)]
-        cmd.creation_flags(CREATE_NO_WINDOW);
-        let _ = cmd.output();
-    }
+    write_run_entry()?;
+    write_startup_approved(enabled)?;
     Ok(())
 }
 
@@ -1240,6 +1314,15 @@ pub fn poll_music_now(platform: &PlatformState) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn startup_approved_binary_parser_reads_enabled_and_disabled() {
+        let enabled_out = "\r\nHKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\StartupApproved\\Run\r\n    NotchCat    REG_BINARY    020000000000000000000000\r\n";
+        let disabled_out = "\r\nHKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\StartupApproved\\Run\r\n    NotchCat    REG_BINARY    03000000A1B2C3D401000000\r\n";
+        assert_eq!(parse_startup_approved_enabled(enabled_out), Some(true));
+        assert_eq!(parse_startup_approved_enabled(disabled_out), Some(false));
+        assert_eq!(parse_startup_approved_enabled("no match"), None);
+    }
 
     #[test]
     fn update_version_comparison_and_json_parse() {

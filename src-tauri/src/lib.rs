@@ -58,6 +58,9 @@ pub fn run() {
         }
     };
     let _ = std::fs::remove_file(db_path.with_extension("activate"));
+    if std::env::var_os("NOTCHCAT_DB").is_none() {
+        platform::ensure_startup_registered();
+    }
     let db = Db::open_or_memory(&db_path);
 
     let mut core_state = CoreState::new(db);

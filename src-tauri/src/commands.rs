@@ -54,8 +54,18 @@ pub fn set_insights_week_offset(app: AppHandle, rt: Rt, offset: i64) {
 
 #[tauri::command]
 pub fn set_modal_open(app: AppHandle, rt: Rt, open: bool) {
-    rt.ui.lock().unwrap().modal_open = open;
-    emit_snapshot(&app, &rt);
+    let changed = {
+        let mut ui = rt.ui.lock().unwrap();
+        if ui.modal_open == open {
+            false
+        } else {
+            ui.modal_open = open;
+            true
+        }
+    };
+    if changed {
+        emit_snapshot(&app, &rt);
+    }
 }
 
 #[tauri::command]

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Minus, Plus } from "lucide-react";
 import { api } from "../api";
@@ -9,12 +9,15 @@ const ModalShell: React.FC<{
   wide?: boolean;
   children: React.ReactNode;
 }> = ({ onClose, wide, children }) => {
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
   useEffect(() => {
     api.setModalOpen(true);
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         e.stopPropagation();
-        onClose();
+        onCloseRef.current();
       }
     };
     window.addEventListener("keydown", onKey, true);
@@ -22,7 +25,7 @@ const ModalShell: React.FC<{
       api.setModalOpen(false);
       window.removeEventListener("keydown", onKey, true);
     };
-  }, [onClose]);
+  }, []);
 
   const host = document.querySelector(".nc-tray") ?? document.body;
   return createPortal(
